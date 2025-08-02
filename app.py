@@ -3,13 +3,14 @@ import pandas as pd
 import google.generativeai as genai
 import os
 import traceback
-import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
 from streamlit_mic_recorder import mic_recorder
 
-# --- Page Configuration ---
+# --- Page Configuration (applied from .streamlit/config.toml) ---
 st.set_page_config(
-    page_title="Interactive Dashboard AI",
-    page_icon="📊",
+    page_title="Professional AI Dashboard",
+    page_icon="✨",
     layout="wide",
 )
 
@@ -28,8 +29,9 @@ else:
 
 
 # --- Helper Functions ---
+@st.cache_data
 def load_data(uploaded_file):
-    """Loads data from an uploaded file into a pandas DataFrame."""
+    """Caches the data loading to improve performance."""
     try:
         if uploaded_file.name.endswith('.csv'):
             return pd.read_csv(uploaded_file)
@@ -40,16 +42,17 @@ def load_data(uploaded_file):
         elif uploaded_file.name.endswith('.txt'):
             return pd.read_csv(uploaded_file, delimiter='\t')
         else:
-            st.error("Unsupported file format. Please upload a .csv, .xlsx, .parquet, or .txt file.")
+            st.error("Unsupported file format.")
             return None
     except Exception as e:
         st.error(f"Error loading file: {e}")
         return None
 
-def get_matplotlib_code(user_request, df_head):
-    """Generates Matplotlib code using Google's Gemini AI."""
+def get_plotly_python_code(user_request, df_head):
+    """Generates Python code for a Plotly chart using Google's Gemini AI."""
     prompt = f"""
-    Act as an expert Python data visualization specialist. Your ONLY task is to generate Python code to create a Matplotlib plot based on a user request.
+    Act as an expert Python data scientist specializing in Plotly.
+    Your task is to generate a Python script to create a Plotly figure based on a user request.
 
     User Request: "{user_request}"
 
@@ -59,36 +62,39 @@ def get_matplotlib_code(user_request, df_head):
     ```
 
     **CRITICAL INSTRUCTIONS:**
-    1.  Your entire output MUST BE a single block of Python code. Do not include any explanation, markdown, or text.
-    2.  You MUST name the plot's figure object `fig`. Always start your code with `fig, ax = plt.subplots()`. This is mandatory.
-    3.  **Visualization Rule 1:** If the user requests a pie chart AND the number of categories to plot is greater than 10, generate a horizontal bar chart instead. A horizontal bar chart is much more readable.
-    4.  **Visualization Rule 2:** If you generate a bar chart and the number of categories is greater than 15, ONLY PLOT THE TOP 15. This is crucial for readability. The title should reflect this (e.g., "Top 15...").
-    5.  For all bar charts, sort the values so the chart is easy to interpret.
-    6.  The code must use the pandas DataFrame variable named `df`.
-    7.  Do NOT include `plt.show()`. The environment will handle rendering.
-    8.  Use `plt.tight_layout()` at the end to prevent labels from being cut off.
+    1.  Your entire output MUST BE a single block of runnable Python code. Do not include any explanation or markdown.
+    2.  The script MUST create a Plotly Figure object and assign it to a variable named `fig`.
+    3.  **Handle Date/Time Data:** If a column looks like a date (e.g., 'SALES_DATE'), you MUST convert it to a datetime object first using `df['COLUMN_NAME'] = pd.to_datetime(df['COLUMN_NAME'])` before performing any time-based analysis like grouping by day or month.
+    4.  **Use Plotly Express or Graph Objects:** You can use `plotly.express` (as `px`) or `plotly.graph_objects` (as `go`).
+    5.  **Summarization Rule:** If the user asks for a chart with more than 15 categories (e.g., bar chart by location), ONLY plot the "Top 15". The title should reflect this.
+    6.  The code must use the pandas DataFrame variable named `df`. Do not load data.
+    7.  Make the chart look professional. Use a clean template like `template='plotly_dark'` if it fits a dark theme.
 
-    **Example of a PERFECT output for 'bar chart of sales by location' (with many locations):**
+    **Example of a PERFECT output for 'daily bar graph of total sales':**
     ```python
-    import matplotlib.pyplot as plt
     import pandas as pd
+    import plotly.express as px
 
-    fig, ax = plt.subplots()
-    # Group, sum, and get the top 15 locations
-    data_to_plot = df.groupby('LOCATION')['SALES_VALUE'].sum().nlargest(15)
-    # Sort again for horizontal bar chart display (largest at top)
-    data_to_plot.sort_values().plot(kind='barh', ax=ax)
-    ax.set_title('Top 15 Locations by Total Sales Value')
-    ax.set_xlabel('Total Sales Value')
-    ax.set_ylabel('Location')
-    plt.tight_layout()
+    # Ensure the date column is in datetime format
+    df['SALES_DATE'] = pd.to_datetime(df['SALES_DATE'])
+    
+    # Group by date and sum sales
+    daily_sales = df.groupby(df['SALES_DATE'].dt.date)['SALES_VALUE'].sum().reset_index()
+    
+    # Create the figure
+    fig = px.bar(daily_sales, 
+                 x='SALES_DATE', 
+                 y='SALES_VALUE', 
+                 title='Total Sales Value per Day',
+                 labels={{'SALES_DATE': 'Date', 'SALES_VALUE': 'Total Sales'}})
+    
+    fig.update_layout(template='plotly_dark', title_x=0.5)
     ```
 
     Now, generate the Python code for the user request.
     """
     try:
         response = model.generate_content(prompt)
-        # Clean up the response to get only the code part
         code = response.text.strip()
         if code.startswith("```python"):
             code = code[9:]
@@ -97,116 +103,98 @@ def get_matplotlib_code(user_request, df_head):
         return code.strip()
     except Exception as e:
         st.error(f"An error occurred with the AI model: {e}")
+        st.info("AI Response that may have caused the error:")
+        st.code(response.text, language='text')
         return None
 
 # --- Session State Initialization ---
-if 'df' not in st.session_state:
+if "df" not in st.session_state:
     st.session_state.df = None
-if 'analysis_history' not in st.session_state:
+if "analysis_history" not in st.session_state:
     st.session_state.analysis_history = []
-if 'voice_text' not in st.session_state:
-    st.session_state.voice_text = ""
 
 
 # --- Main Application ---
-st.title("🤖 AI-Powered Interactive Dashboard")
-st.markdown("Upload your data, ask questions in plain English (or use your voice!), and get visualizations instantly.")
+st.title("✨ Professional AI-Powered Dashboard")
 
-# --- Sidebar for Data Upload and Options ---
+# --- Sidebar ---
 with st.sidebar:
     st.header("1. Upload Your Data")
     uploaded_file = st.file_uploader(
-        "Choose a file (xlsx, parquet, csv, txt)",
-        type=['xlsx', 'parquet', 'csv', 'txt']
+        "Choose a file", type=['xlsx', 'parquet', 'csv', 'txt'], label_visibility="collapsed"
     )
-
     if uploaded_file:
         st.session_state.df = load_data(uploaded_file)
 
+    # This is the line that was corrected.
     if st.session_state.df is not None:
-        st.success("File loaded successfully!")
-        st.markdown("---")
-        st.header("Data Preview")
-        st.write("Column Names:", st.session_state.df.columns.tolist())
-        st.write("Data Sample:", st.session_state.df.head())
+        st.success("Data loaded successfully!")
+        with st.expander("Data Preview"):
+            st.dataframe(st.session_state.df.head())
     
     st.markdown("---")
-    st.header("Options")
-    if st.button("Restart Session & Clear History"):
+    if st.button("Restart Session & Clear"):
         st.session_state.clear()
         st.rerun()
 
-
-# --- Main Content Area for Analysis ---
+# --- Main Content ---
 if st.session_state.df is not None:
-    st.header("2. Analyze Your Data")
-
-    col1, col2 = st.columns([4, 1])
-    with col1:
-        text_request = st.text_input(
-            "Enter your analysis request (e.g., 'Plot a bar chart of sales by region')",
-            key="text_request_input"
-        )
-    with col2:
-        st.write("Or use your voice:")
-        voice_result = mic_recorder(
-            start_prompt="🎤",
-            stop_prompt="⏹️",
-            key='voice_recorder'
-        )
-        if voice_result and 'text' in voice_result:
-            st.session_state.voice_text = voice_result['text']
-
-    user_request = text_request or st.session_state.voice_text
+    st.header("2. Ask Your Data a Question")
     
-    if st.session_state.voice_text:
-        st.info(f"Voice request: \"{st.session_state.voice_text}\"")
-        user_request = st.session_state.voice_text
-        st.session_state.voice_text = ""
+    user_request = st.text_input(
+        "Enter your request", 
+        placeholder="e.g., 'What are the daily sales trends?'",
+        label_visibility="collapsed"
+    )
 
-    if user_request:
-        if st.button("Generate Visualization", key="generate_viz"):
-            with st.spinner("AI is generating visualization code..."):
+    if st.button("Generate Chart", key="generate"):
+        if user_request:
+            with st.spinner("AI is performing analysis and creating your chart..."):
                 df_head = st.session_state.df.head()
-                matplotlib_code = get_matplotlib_code(user_request, df_head)
-
-                if matplotlib_code:
+                python_code = get_plotly_python_code(user_request, df_head)
+                
+                if python_code:
+                    # Insert the new analysis at the beginning of the list
                     st.session_state.analysis_history.insert(0, {
                         "request": user_request,
-                        "code": matplotlib_code
+                        "code": python_code
                     })
                 else:
-                    st.error("Failed to generate visualization code.")
-                st.rerun() # Rerun to display the new chart immediately
-
-# --- Display Analysis History ---
-if st.session_state.analysis_history:
-    st.header("3. Visualization Results")
-    
-    analysis = st.session_state.analysis_history[0]
-    st.subheader(f"Request: \"{analysis['request']}\"")
-    
-    with st.expander("Show Generated Code"):
-        st.code(analysis['code'], language='python')
-    
-    try:
-        plt.clf()
-        df = st.session_state.df
-        local_scope = {"df": df, "plt": plt, "pd": pd}
-        exec(analysis['code'], local_scope)
-        
-        fig = local_scope.get('fig', None)
-        if fig:
-            st.pyplot(fig)
+                    st.error("Could not generate the Python code for the chart.")
         else:
-            st.warning("Generated code ran successfully, but did not produce a Matplotlib figure named 'fig'.")
+            st.warning("Please enter a request.")
 
-    except Exception as e:
-        st.error(f"Error executing the generated code for request: \"{analysis['request']}\"")
-        st.info("AI Generated Code (that caused the error):")
-        st.code(analysis['code'], language='python')
-        st.info("Error Details:")
-        st.code(traceback.format_exc())
+    # --- Display the LATEST analysis result ---
+    if st.session_state.analysis_history:
+        latest_analysis = st.session_state.analysis_history[0]
+        st.header("3. Visualization Result")
+        st.subheader(f"Request: \"{latest_analysis['request']}\"")
+        
+        # Use tabs for a cleaner look
+        tab1, tab2 = st.tabs(["📊 Chart", "📄 Generated Code"])
 
-elif st.session_state.df is None:
-    st.info("Upload a file to get started.")
+        with tab1:
+            try:
+                # Create a scope for the exec function to run in
+                local_scope = {
+                    "df": st.session_state.df.copy(), # Use a copy to prevent modification of the original df
+                    "pd": pd,
+                    "px": px,
+                    "go": go
+                }
+                exec(latest_analysis['code'], local_scope)
+                
+                fig = local_scope.get('fig', None)
+                if fig:
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.warning("The generated code ran, but did not produce a Plotly figure named 'fig'.")
+
+            except Exception as e:
+                st.error(f"Error executing the generated Python code.")
+                st.code(traceback.format_exc(), language='text')
+
+        with tab2:
+            st.code(latest_analysis['code'], language='python')
+else:
+    st.info("Please upload a data file in the sidebar to get started.")
