@@ -1,0 +1,6 @@
+streamlit
+pandas
+google-generativeai
+openpyxl
+pyarrow
+streamlit-mic-recorder
