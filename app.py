@@ -50,6 +50,7 @@ def load_data(uploaded_file):
 
 def get_plotly_python_code(user_request, df_head):
     """Generates Python code for a Plotly chart using Google's Gemini AI."""
+    # This is the updated and corrected prompt
     prompt = f"""
     Act as an expert Python data scientist specializing in Plotly.
     Your task is to generate a Python script to create a Plotly figure based on a user request.
@@ -64,11 +65,11 @@ def get_plotly_python_code(user_request, df_head):
     **CRITICAL INSTRUCTIONS:**
     1.  Your entire output MUST BE a single block of runnable Python code. Do not include any explanation or markdown.
     2.  The script MUST create a Plotly Figure object and assign it to a variable named `fig`.
-    3.  **Handle Date/Time Data:** If a column looks like a date (e.g., 'SALES_DATE'), you MUST convert it to a datetime object first using `df['COLUMN_NAME'] = pd.to_datetime(df['COLUMN_NAME'])` before performing any time-based analysis like grouping by day or month.
-    4.  **Use Plotly Express or Graph Objects:** You can use `plotly.express` (as `px`) or `plotly.graph_objects` (as `go`).
-    5.  **Summarization Rule:** If the user asks for a chart with more than 15 categories (e.g., bar chart by location), ONLY plot the "Top 15". The title should reflect this.
-    6.  The code must use the pandas DataFrame variable named `df`. Do not load data.
-    7.  Make the chart look professional. Use a clean template like `template='plotly_dark'` if it fits a dark theme.
+    3.  **IMPORTANT SYNTAX:** Do NOT use `subplots()` with Plotly (e.g., `px.subplots()` or `go.subplots()` will cause an error). The `subplots` function is for the Matplotlib library. Create Plotly figures directly, for example: `fig = px.bar(...)` or `fig = go.Figure(...)`.
+    4.  **Handle Date/Time Data:** If a column looks like a date (e.g., 'SALES_DATE'), you MUST convert it to a datetime object first using `df['COLUMN_NAME'] = pd.to_datetime(df['COLUMN_NAME'])` before performing any time-based analysis.
+    5.  **Use Plotly Express or Graph Objects:** Use `plotly.express` (as `px`) for simple charts or `plotly.graph_objects` (as `go`) for more complex ones.
+    6.  **Summarization Rule:** If the user asks for a chart with more than 15 categories (e.g., bar chart by location), ONLY plot the "Top 15". The title should reflect this.
+    7.  Make the chart look professional. Use a clean template like `template='plotly_dark'` to match the app's dark theme.
 
     **Example of a PERFECT output for 'daily bar graph of total sales':**
     ```python
@@ -81,7 +82,7 @@ def get_plotly_python_code(user_request, df_head):
     # Group by date and sum sales
     daily_sales = df.groupby(df['SALES_DATE'].dt.date)['SALES_VALUE'].sum().reset_index()
     
-    # Create the figure
+    # Create the figure directly with Plotly Express
     fig = px.bar(daily_sales, 
                  x='SALES_DATE', 
                  y='SALES_VALUE', 
@@ -126,7 +127,6 @@ with st.sidebar:
     if uploaded_file:
         st.session_state.df = load_data(uploaded_file)
 
-    # This is the line that was corrected.
     if st.session_state.df is not None:
         st.success("Data loaded successfully!")
         with st.expander("Data Preview"):
@@ -154,7 +154,6 @@ if st.session_state.df is not None:
                 python_code = get_plotly_python_code(user_request, df_head)
                 
                 if python_code:
-                    # Insert the new analysis at the beginning of the list
                     st.session_state.analysis_history.insert(0, {
                         "request": user_request,
                         "code": python_code
@@ -170,14 +169,12 @@ if st.session_state.df is not None:
         st.header("3. Visualization Result")
         st.subheader(f"Request: \"{latest_analysis['request']}\"")
         
-        # Use tabs for a cleaner look
         tab1, tab2 = st.tabs(["📊 Chart", "📄 Generated Code"])
 
         with tab1:
             try:
-                # Create a scope for the exec function to run in
                 local_scope = {
-                    "df": st.session_state.df.copy(), # Use a copy to prevent modification of the original df
+                    "df": st.session_state.df.copy(),
                     "pd": pd,
                     "px": px,
                     "go": go
