@@ -33,7 +33,6 @@ else:
 def load_data(uploaded_file):
     """Caches the data loading to improve performance."""
     try:
-        # Use a copy of the file uploader object to avoid rehashing issues
         file_copy = uploaded_file
         if file_copy.name.endswith('.csv'):
             return pd.read_csv(file_copy)
@@ -52,6 +51,7 @@ def load_data(uploaded_file):
 
 def get_plotly_python_code(user_request, df_head):
     """Generates Python code for a Plotly chart using Google's Gemini AI."""
+    # This is the final, most robust prompt.
     prompt = f"""
     Act as an expert Python data scientist specializing in Plotly.
     Your task is to generate a Python script to create a Plotly figure based on a user request.
@@ -66,24 +66,30 @@ def get_plotly_python_code(user_request, df_head):
     **CRITICAL INSTRUCTIONS:**
     1.  Your entire output MUST BE a single block of runnable Python code. Do not include any explanation or markdown.
     2.  The script MUST create a Plotly Figure object and assign it to a variable named `fig`.
-    3.  **IMPORTANT SYNTAX:** Do NOT use `subplots()` with Plotly (e.g., `px.subplots()` or `go.subplots()` will cause an error). Create Plotly figures directly, for example: `fig = px.bar(...)` or `fig = go.Figure(...)`.
-    4.  **Handle Date/Time Data:** If a column looks like a date (e.g., 'SALES_DATE'), you MUST convert it to a datetime object first using `df['COLUMN_NAME'] = pd.to_datetime(df['COLUMN_NAME'])` before performing any time-based analysis.
-    5.  **Use Plotly Express or Graph Objects:** Use `plotly.express` (as `px`) or `plotly.graph_objects` (as `go`).
-    6.  **Summarization Rule:** If the user asks for a chart with more than 15 categories (e.g., bar chart by location), ONLY plot the "Top 15". The title should reflect this.
-    7.  Make the chart look professional. Use a clean template like `template='plotly_dark'` to match the app's dark theme.
+    3.  **SYNTAX - `subplots`:** Do NOT use `subplots()` with Plotly (e.g., `px.subplots()`). This is a Matplotlib function. Create Plotly figures directly: `fig = px.bar(...)`.
+    4.  **SYNTAX - `heatmap`:** For heatmaps, you MUST use `px.imshow()` (for matrix-like data like correlations) or `go.Heatmap()`. The function `px.heatmap` does NOT exist and will cause an error.
+    5.  **DATA - Date/Time:** If a column looks like a date (e.g., 'SALES_DATE'), you MUST convert it to datetime using `pd.to_datetime()` before any time-based analysis.
+    6.  **DATA - Summarization:** If a user requests a chart with more than 15 categories (e.g., a bar chart), ONLY plot the "Top 15". The title should reflect this.
+    7.  **STYLE:** Make charts look professional. Use a clean template like `template='plotly_dark'` to match the app's theme.
 
-    **Example of a PERFECT output for 'daily bar graph of total sales':**
+    **Example of a PERFECT output for 'heatmap of the correlation between numerical columns':**
     ```python
     import pandas as pd
     import plotly.express as px
 
-    df['SALES_DATE'] = pd.to_datetime(df['SALES_DATE'])
-    daily_sales = df.groupby(df['SALES_DATE'].dt.date)['SALES_VALUE'].sum().reset_index()
-    fig = px.bar(daily_sales, 
-                 x='SALES_DATE', 
-                 y='SALES_VALUE', 
-                 title='Total Sales Value per Day',
-                 labels={{'SALES_DATE': 'Date', 'SALES_VALUE': 'Total Sales'}})
+    # Select only numeric columns for correlation
+    numeric_df = df.select_dtypes(include='number')
+    
+    # Calculate the correlation matrix
+    corr_matrix = numeric_df.corr()
+    
+    # Create the heatmap figure using px.imshow
+    fig = px.imshow(corr_matrix,
+                    text_auto=True,
+                    aspect="auto",
+                    labels=dict(color="Correlation"),
+                    title="Correlation Heatmap of Numerical Columns")
+    
     fig.update_layout(template='plotly_dark', title_x=0.5)
     ```
     Now, generate the Python code for the user request.
@@ -136,12 +142,11 @@ with st.sidebar:
 if st.session_state.df is not None:
     st.header("2. Ask Your Data a Question")
     
-    # --- Text and Voice Input ---
     col1, col2 = st.columns([5, 1])
     with col1:
         text_request = st.text_input(
             "Enter your request", 
-            placeholder="e.g., 'What are the daily sales trends?' or use the mic ->",
+            placeholder="e.g., 'Show me a heatmap of correlations' or use the mic ->",
             label_visibility="collapsed"
         )
     with col2:
@@ -154,7 +159,6 @@ if st.session_state.df is not None:
     user_request = text_request
     if voice_request and 'text' in voice_request:
         user_request = voice_request['text']
-        # Show what was heard
         st.info(f"Heard you say: \"{user_request}\"")
 
     if st.button("Generate Chart", key="generate") and user_request:
@@ -163,7 +167,6 @@ if st.session_state.df is not None:
             python_code = get_plotly_python_code(user_request, df_head)
             
             if python_code:
-                # Insert the new analysis at the beginning of the list to show it first
                 st.session_state.analysis_history.insert(0, {
                     "request": user_request,
                     "code": python_code
@@ -173,9 +176,7 @@ if st.session_state.df is not None:
     elif not user_request and st.session_state.get('generate'):
          st.warning("Please enter a request.")
 
-
     st.markdown("---")
-    # --- Display the FULL analysis history ---
     if st.session_state.analysis_history:
         st.header("3. Analysis History")
         
