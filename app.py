@@ -127,7 +127,10 @@ with st.sidebar:
 
 if st.session_state.df is not None:
     st.header("2. Ask Your Data a Question")
-    col1, col2 = st.columns()
+    
+    # THIS IS THE LINE THAT HAS BEEN CORRECTED
+    col1, col2 = st.columns([5, 1])
+    
     with col1: text_request = st.text_input("Enter your request", placeholder="e.g., 'Show top 10 stores by sales' or use the mic ->", label_visibility="collapsed")
     with col2: voice_request = mic_recorder(start_prompt="🎤", stop_prompt="⏹️", key='voice_recorder')
     
@@ -147,7 +150,6 @@ if st.session_state.df is not None:
             with st.container(border=True):
                 st.subheader(f"Request: \"{analysis['request']}\"")
                 
-                # THIS IS THE LINE THAT HAS BEEN MANUALLY CORRECTED
                 tab1, tab2 = st.tabs([f"📊 Output #{i+1}", f"📄 Code #{i+1}"])
 
                 with tab1:
@@ -161,7 +163,6 @@ if st.session_state.df is not None:
                         if fig is not None:
                             st.plotly_chart(fig, use_container_width=True)
                         elif result_df is not None:
-                            # Dynamically adjust height to avoid excessive scrolling
                             height = (len(result_df) + 1) * 35 + 3
                             st.dataframe(result_df, height=height, use_container_width=True)
                         else:
