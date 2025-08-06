@@ -31,17 +31,22 @@ else:
 # --- Helper Functions ---
 @st.cache_data
 def load_data(uploaded_file):
+    """Caches the data loading to improve performance."""
     try:
         file_copy = uploaded_file
         if file_copy.name.endswith('.csv'): return pd.read_csv(file_copy)
         elif file_copy.name.endswith('.xlsx'): return pd.read_excel(file_copy)
         elif file_copy.name.endswith('.parquet'): return pd.read_parquet(file_copy)
         elif file_copy.name.endswith('.txt'): return pd.read_csv(file_copy, delimiter='\t')
+        else:
+            st.error("Unsupported file format.")
+            return None
     except Exception as e:
         st.error(f"Error loading file: {e}")
         return None
 
 def get_python_code(user_request, df_head):
+    """Generates Python code for a Plotly chart OR a pandas DataFrame."""
     prompt = f"""
     Act as an expert Python data analyst. Your task is to generate a Python script based on a user request.
     The script will produce EITHER a Plotly figure OR a pandas DataFrame for display.
@@ -142,7 +147,7 @@ if st.session_state.df is not None:
             with st.container(border=True):
                 st.subheader(f"Request: \"{analysis['request']}\"")
                 
-                # THIS IS THE CORRECTED LINE
+                # THIS IS THE LINE THAT HAS BEEN MANUALLY CORRECTED
                 tab1, tab2 = st.tabs([f"📊 Output #{i+1}", f"📄 Code #{i+1}"])
 
                 with tab1:
@@ -161,7 +166,7 @@ if st.session_state.df is not None:
                             st.dataframe(result_df, height=height, use_container_width=True)
                         else:
                             st.warning("The generated code ran, but did not produce a `fig` or a `result_df`.")
-                    except Exception:
+                    except Exception as e:
                         st.error("Error executing generated code.")
                         st.code(traceback.format_exc(), language='text')
                 with tab2:
