@@ -7,7 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from streamlit_mic_recorder import mic_recorder
 
-# --- Page Configuration (applied from .streamlit/config.toml) ---
+# --- Page Configuration ---
 st.set_page_config(
     page_title="Professional AI Dashboard",
     page_icon="✨",
@@ -31,27 +31,17 @@ else:
 # --- Helper Functions ---
 @st.cache_data
 def load_data(uploaded_file):
-    """Caches the data loading to improve performance."""
     try:
         file_copy = uploaded_file
-        if file_copy.name.endswith('.csv'):
-            return pd.read_csv(file_copy)
-        elif file_copy.name.endswith('.xlsx'):
-            return pd.read_excel(file_copy)
-        elif file_copy.name.endswith('.parquet'):
-            return pd.read_parquet(file_copy)
-        elif file_copy.name.endswith('.txt'):
-            return pd.read_csv(file_copy, delimiter='\t')
-        else:
-            st.error("Unsupported file format.")
-            return None
+        if file_copy.name.endswith('.csv'): return pd.read_csv(file_copy)
+        elif file_copy.name.endswith('.xlsx'): return pd.read_excel(file_copy)
+        elif file_copy.name.endswith('.parquet'): return pd.read_parquet(file_copy)
+        elif file_copy.name.endswith('.txt'): return pd.read_csv(file_copy, delimiter='\t')
     except Exception as e:
         st.error(f"Error loading file: {e}")
         return None
 
 def get_python_code(user_request, df_head):
-    """Generates Python code for a Plotly chart OR a pandas DataFrame."""
-    # This prompt is our most advanced, handling both charts and data tables.
     prompt = f"""
     Act as an expert Python data analyst. Your task is to generate a Python script based on a user request.
     The script will produce EITHER a Plotly figure OR a pandas DataFrame for display.
@@ -117,7 +107,6 @@ if "analysis_history" not in st.session_state: st.session_state.analysis_history
 # --- Main Application ---
 st.title("✨ Professional AI-Powered Dashboard")
 
-# --- Sidebar ---
 with st.sidebar:
     st.header("1. Upload Your Data")
     uploaded_file = st.file_uploader("Choose a file", type=['xlsx', 'parquet', 'csv', 'txt'], label_visibility="collapsed")
@@ -131,10 +120,9 @@ with st.sidebar:
         st.session_state.clear()
         st.rerun()
 
-# --- Main Content ---
 if st.session_state.df is not None:
     st.header("2. Ask Your Data a Question")
-    col1, col2 = st.columns([5, 1])
+    col1, col2 = st.columns()
     with col1: text_request = st.text_input("Enter your request", placeholder="e.g., 'Show top 10 stores by sales' or use the mic ->", label_visibility="collapsed")
     with col2: voice_request = mic_recorder(start_prompt="🎤", stop_prompt="⏹️", key='voice_recorder')
     
@@ -153,168 +141,30 @@ if st.session_state.df is not None:
         for i, analysis in enumerate(st.session_state.analysis_history):
             with st.container(border=True):
                 st.subheader(f"Request: \"{analysis['request']}\"")
-                tab1, tab2 = st.tabs([f"📊 Output #{i+1}", f"📄 Code #{i+alues']
-        #   ax.set_title('Total Sales Value by Location')
-        #   ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-        ```
-    
-        Now, generate the Python code for the user request.
-        """
-        try:
-            response = model.generate_content(prompt)
-            # Clean up the response to get only the code part
-            code = response.text.strip()
-            if code.startswith("```python"):
-                code = code[9:]
-            if code.endswith("```"):
-                code = code[:-3]
-            return code.strip()
-        except Exception as e:
-            st.error(f"An error occurred with the AI model: {e}")
-            return None
-    
-    # --- Session State Initialization ---
-    if 'df' not in st.session_state:
-        st.session_state.df = None
-    if 'analysis_history' not in st.session_state:
-        st.session_state.analysis_history = []
-    if 'voice_text' not in st.session_state:
-        st.session_state.voice_text = ""
-    
-    
-    # --- Main Application ---
-    st.title("🤖 AI-Powered Interactive Dashboard")
-    st.markdown("Upload your data, ask questions in plain English (or use your voice!), and get visualizations instantly.")
-    
-    # --- Sidebar for Data Upload and Options ---
-    with st.sidebar:
-        st.header("1. Upload Your Data")
-        uploaded_file = st.file_uploader(
-            "Choose a file (xlsx, parquet, csv, txt)",
-            type=['xlsx', 'parquet', 'csv', 'txt']
-        )
-    
-        if uploaded_file:
-            st.session_state.df = load_data(uploaded_file)
-    
-        if st.session_state.df is not None:
-            st.success("File loaded successfully!")
-            st.markdown("---")
-            st.header("Data Preview")
-            st.write("Column Names:", st.session_state.df.columns.tolist())
-            st.write("Data Sample:", st.session_state.df.head())
-        
-        st.markdown("---")
-        st.header("Options")
-        if st.button("Restart Session & Clear History"):
-            st.session_state.clear()
-            st.rerun()
-    
-    
-    # --- Main Content Area for Analysis ---
-    if st.session_state.df is not None:
-        st.header("2. Analyze Your Data")
-    
-        # --- User Input: Text and Voice ---
-        col1, col2 = st.columns()
-        with col1:
-            text_request = st.text_input(
-                "Enter your analysis request (e.g., 'Plot a bar chart of sales by region')",
-                key="text_request_input"
-            )
-        with col2:
-            st.write("Or use your voice:")
-            voice_result = mic_recorder(
-                start_prompt="🎤",
-                stop_prompt="⏹️",
-                key='voice_recorder'
-            )
-            if voice_result and 'text' in voice_result:
-                st.session_state.voice_text = voice_result['text']
-    
-    
-        # --- Combine Inputs and Process ---
-        user_request = text_request or st.session_state.voice_text
-        
-        if st.session_state.voice_text:
-            st.info(f"Voice request: \"{st.session_state.voice_text}\"")
-            # Set voice text as the main request and clear it
-            user_request = st.session_state.voice_text
-            st.session_state.voice_text = ""
-    
-        if user_request:
-            if st.button("Generate Visualization", key="generate_viz"):
-                with st.spinner("AI is generating visualization code..."):
-                    df_head = st.session_state.df.head()
-                    matplotlib_code = get_matplotlib_code(user_request, df_head)
-    
-                    if matplotlib_code:
-                        st.session_state.analysis_history.append({
-                            "request": user_request,
-                            "code": matplotlib_code
-                        })
-                    else:
-                        st.error("Failed to generate visualization code.")
-    
-    # --- Display Analysis History ---
-    if st.session_state.analysis_history:
-        st.header("3. Visualization Results")
-        
-        for analysis in reversed(st.session_state.analysis_history):
-            st.subheader(f"Request: \"{analysis['request']}\"")
-            
-            with st.expander("Show Generated Code"):
-                st.code(analysis['code'], language='python')
-            
-            try:
-                # Clear any previous plots to start with a clean slate
-                plt.clf()
                 
-                # Execute the generated code
-                df = st.session_state.df # Make the dataframe available
-                # We also provide pd and plt in the scope for the AI to use if needed
-                local_scope = {"df": df, "plt": plt, "pd": pd}
-                exec(analysis['code'], local_scope)
-                
-                # Get the figure from the local scope
-                fig = local_scope.get('fig', None)
-                if fig:
-                    st.pyplot(fig)
-                else:
-                    # This is the error you were seeing. Now it's more helpful.
-                    st.warning("Generated code ran successfully, but did not produce a Matplotlib figure named 'fig'.")
-                    st.info("This can happen if the AI's response format is slightly off. The prompt has been improved to prevent this.")
-    
-            except Exception as e:
-                # If the code itself has an error, show the details.
-                st.error(f"Error executing the generated code for request: \"{analysis['request']}\"")
-                st.info("AI Generated Code (that caused the error):")
-                st.code(analysis['code'], language='python')
-                st.info("Error Details:")
-                st.code(traceback.format_exc())
-            
-            st.markdown("---")
-    
-    elif st.session_state.df is None:
-        st.info("Upload a file to get started.")
-    ```
-    
-    ### `requirements.txt` File
-    
-    Don't forget this file. It's essential for telling Streamlit Cloud which libraries your app needs. Make sure this file is in the same folder as your `app.py`.
-    
-    ```
-    streamlit
-    pandas
-    google-generativeai
-    openpyxl
-    pyarrow
-    streamlit-mic-recorder
-    ```
-    
-    You now have a complete, robust, and much more intelligent version of your interactive dashboard application.
-    
-    
-    
-    
-    
+                # THIS IS THE CORRECTED LINE
+                tab1, tab2 = st.tabs([f"📊 Output #{i+1}", f"📄 Code #{i+1}"])
+
+                with tab1:
+                    try:
+                        local_scope = {"df": st.session_state.df.copy(), "pd": pd, "px": px, "go": go}
+                        exec(analysis['code'], local_scope)
+                        
+                        fig = local_scope.get('fig')
+                        result_df = local_scope.get('result_df')
+
+                        if fig is not None:
+                            st.plotly_chart(fig, use_container_width=True)
+                        elif result_df is not None:
+                            # Dynamically adjust height to avoid excessive scrolling
+                            height = (len(result_df) + 1) * 35 + 3
+                            st.dataframe(result_df, height=height, use_container_width=True)
+                        else:
+                            st.warning("The generated code ran, but did not produce a `fig` or a `result_df`.")
+                    except Exception:
+                        st.error("Error executing generated code.")
+                        st.code(traceback.format_exc(), language='text')
+                with tab2:
+                    st.code(analysis['code'], language='python')
+else:
+    st.info("Please upload a data file in the sidebar to get started.")
