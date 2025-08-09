@@ -5,6 +5,8 @@ import os
 import traceback
 import plotly.express as px
 import plotly.graph_objects as go
+# --- CHANGE 1: Import make_subplots here ---
+from plotly.subplots import make_subplots
 from streamlit_mic_recorder import mic_recorder
 
 # --- Page Configuration ---
@@ -44,7 +46,6 @@ def load_data(uploaded_file):
 
 def get_python_code(user_request, df_head):
     """Generates Python code for complex Plotly charts, including subplots."""
-    # This is the most advanced prompt yet, teaching the AI about subplots.
     prompt = f"""
     Act as a world-class Python data scientist creating advanced data visualizations with Plotly.
     Your task is to generate a Python script to create a single Plotly Figure, which may contain multiple subplots.
@@ -58,7 +59,7 @@ def get_python_code(user_request, df_head):
     **CRITICAL INSTRUCTIONS:**
     1.  Your entire output MUST BE a single block of runnable Python code. No explanations.
     2.  The script's final output MUST be a single Plotly Figure object assigned to a variable named `fig`.
-    3.  **SUBPLOTS:** If the user asks for multiple charts or views (e.g., "show sales and profit over time"), you MUST use `plotly.subplots.make_subplots` to create a figure with multiple traces.
+    3.  **SUBPLOTS:** If the user asks for multiple charts or views (e.g., "show sales and profit over time"), you MUST use `plotly.subplots.make_subplots` to create a figure with multiple traces. The `make_subplots` function will be provided in the execution scope.
     4.  **DATA MANIPULATION:** Perform any necessary data manipulation (like grouping, sorting, calculating correlations, or handling dates with `pd.to_datetime`) within the script.
     5.  **ADVANCED ANALYSIS:** You are capable of complex analysis. If a user asks for "trends," consider generating a time series plot with a moving average. If they ask for "relationships," consider a scatter plot with a regression line.
     6.  **SYNTAX RULES:** Do not use `px.subplots()` or `px.heatmap`. The correct functions are `make_subplots` and `px.imshow`.
@@ -126,7 +127,6 @@ with st.sidebar:
     uploaded_file = st.file_uploader("Choose a file", type=['xlsx', 'parquet', 'csv', 'txt'], label_visibility="collapsed")
     if uploaded_file:
         st.session_state.df = load_data(uploaded_file)
-        # Clear old dashboard items when new data is uploaded
         st.session_state.dashboard_items = []
 
     if st.session_state.df is not None:
@@ -153,7 +153,6 @@ if st.session_state.df is not None:
         with st.spinner("AI is composing your visualization..."):
             python_code = get_python_code(user_request, st.session_state.df.head())
             if python_code:
-                # Add the new analysis to our dashboard list
                 st.session_state.dashboard_items.append({
                     "request": user_request,
                     "code": python_code
@@ -163,20 +162,24 @@ if st.session_state.df is not None:
     
     st.divider()
 
-    # --- Render the Dynamic Dashboard Grid ---
     if st.session_state.dashboard_items:
         st.header("3. Your Composed Dashboard")
         
-        # Create a 2-column layout
         cols = st.columns(2)
         
         for i, item in enumerate(st.session_state.dashboard_items):
-            # Alternate between the two columns
             with cols[i % 2]:
                 with st.container(border=True):
                     st.subheader(f"Request: \"{item['request']}\"")
                     try:
-                        local_scope = {"df": st.session_state.df.copy(), "pd": pd, "px": px, "go": go, "make_subplots": make_subplots}
+                        # --- CHANGE 2: Add make_subplots to the scope ---
+                        local_scope = {
+                            "df": st.session_state.df.copy(), 
+                            "pd": pd, 
+                            "px": px, 
+                            "go": go, 
+                            "make_subplots": make_subplots
+                        }
                         exec(item['code'], local_scope)
                         
                         fig = local_scope.get('fig')
@@ -185,7 +188,6 @@ if st.session_state.df is not None:
                         else:
                             st.warning("Generated code ran, but did not produce a `fig`.")
                         
-                        # Add an expander for the code
                         with st.expander("Show Generated Code"):
                             st.code(item['code'], language='python')
                             
