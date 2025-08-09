@@ -6,4 +6,5 @@ pyarrow
 streamlit-mic-recorder
 matplotlib
 plotly
-kaleido 
+plotly-orca
+psutil
