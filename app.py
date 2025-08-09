@@ -9,8 +9,8 @@ from streamlit_mic_recorder import mic_recorder
 
 # --- Page Configuration ---
 st.set_page_config(
-    page_title="Professional AI Dashboard",
-    page_icon="✨",
+    page_title="AI Dashboard Composer",
+    page_icon="🎨",
     layout="wide",
 )
 
@@ -38,60 +38,68 @@ def load_data(uploaded_file):
         elif file_copy.name.endswith('.xlsx'): return pd.read_excel(file_copy)
         elif file_copy.name.endswith('.parquet'): return pd.read_parquet(file_copy)
         elif file_copy.name.endswith('.txt'): return pd.read_csv(file_copy, delimiter='\t')
-        else:
-            st.error("Unsupported file format.")
-            return None
     except Exception as e:
         st.error(f"Error loading file: {e}")
         return None
 
 def get_python_code(user_request, df_head):
-    """Generates Python code for a Plotly chart OR a pandas DataFrame."""
+    """Generates Python code for complex Plotly charts, including subplots."""
+    # This is the most advanced prompt yet, teaching the AI about subplots.
     prompt = f"""
-    Act as an expert Python data analyst. Your task is to generate a Python script based on a user request.
-    The script will produce EITHER a Plotly figure OR a pandas DataFrame for display.
+    Act as a world-class Python data scientist creating advanced data visualizations with Plotly.
+    Your task is to generate a Python script to create a single Plotly Figure, which may contain multiple subplots.
 
     User Request: "{user_request}"
 
     DataFrame Head for context (the full DataFrame is available in the variable `df`):
-    ```
-    {df_head.to_string()}
+    ```    {df_head.to_string()}
     ```
 
     **CRITICAL INSTRUCTIONS:**
     1.  Your entire output MUST BE a single block of runnable Python code. No explanations.
-    2.  **CHOOSE YOUR OUTPUT:**
-        - If the user asks for a **chart, plot, graph, or visualization**, create a Plotly Figure object and assign it to a variable named `fig`.
-        - If the user asks for a **table, data, list, or a summary**, create a pandas DataFrame with the result and assign it to a variable named `result_df`.
-    3.  **CHARTING RULES (if you create a `fig`):**
-        - Do NOT use `subplots()`. Create figures directly (e.g., `fig = px.bar(...)`).
-        - For heatmaps, use `px.imshow()`. `px.heatmap` does not exist.
-        - Use `template='plotly_dark'`.
-    4.  **DATA RULES (if you create a `result_df`):**
-        - The final output in the script should be the creation of the `result_df` DataFrame.
-    5.  **GENERAL RULES:**
-        - For any analysis involving dates, convert date-like columns to datetime objects first using `pd.to_datetime()`.
-        - For categorical analysis with more than 15 categories, focus on the "Top 15" for readability.
+    2.  The script's final output MUST be a single Plotly Figure object assigned to a variable named `fig`.
+    3.  **SUBPLOTS:** If the user asks for multiple charts or views (e.g., "show sales and profit over time"), you MUST use `plotly.subplots.make_subplots` to create a figure with multiple traces.
+    4.  **DATA MANIPULATION:** Perform any necessary data manipulation (like grouping, sorting, calculating correlations, or handling dates with `pd.to_datetime`) within the script.
+    5.  **ADVANCED ANALYSIS:** You are capable of complex analysis. If a user asks for "trends," consider generating a time series plot with a moving average. If they ask for "relationships," consider a scatter plot with a regression line.
+    6.  **SYNTAX RULES:** Do not use `px.subplots()` or `px.heatmap`. The correct functions are `make_subplots` and `px.imshow`.
+    7.  **STYLE:** Use the `template='plotly_dark'` to ensure all charts look professional and match the app's theme.
 
-    **EXAMPLE 1: User asks for a chart**
-    *   REQUEST: 'Show me a bar chart of sales by location'
+    **EXAMPLE 1: User asks for a single, complex chart**
+    *   REQUEST: 'Show me the correlation heatmap for all numeric columns'
     *   PERFECT OUTPUT:
     ```python
     import pandas as pd
     import plotly.express as px
-    top_15_locations = df.groupby('LOCATION')['SALES_VALUE'].sum().nlargest(15).reset_index()
-    fig = px.bar(top_15_locations, x='LOCATION', y='SALES_VALUE', title='Top 15 Locations by Sales')
+    numeric_df = df.select_dtypes(include='number')
+    corr_matrix = numeric_df.corr()
+    fig = px.imshow(corr_matrix, text_auto=True, aspect="auto", title="Correlation Heatmap")
     fig.update_layout(template='plotly_dark', title_x=0.5)
     ```
 
-    **EXAMPLE 2: User asks for a table**
-    *   REQUEST: 'total sales by store in a table'
+    **EXAMPLE 2: User asks for multiple views (SUBPLOTS)**
+    *   REQUEST: 'Show me daily sales as a bar chart and a 7-day moving average line'
     *   PERFECT OUTPUT:
     ```python
     import pandas as pd
-    result_df = df.groupby('LOCATION')['SALES_VALUE'].sum().reset_index()
-    result_df = result_df.rename(columns={{'LOCATION': 'Store Location', 'SALES_VALUE': 'Total Sales'}})
-    result_df = result_df.sort_values(by='Total Sales', ascending=False)
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    # Prepare the data
+    df['SALES_DATE'] = pd.to_datetime(df['SALES_DATE'])
+    daily_sales = df.groupby(df['SALES_DATE'].dt.date)['SALES_VALUE'].sum().reset_index()
+    daily_sales['7-Day MA'] = daily_sales['SALES_VALUE'].rolling(window=7).mean()
+
+    # Create figure with secondary y-axis
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+    # Add traces
+    fig.add_trace(go.Bar(x=daily_sales['SALES_DATE'], y=daily_sales['SALES_VALUE'], name='Daily Sales'), secondary_y=False)
+    fig.add_trace(go.Scatter(x=daily_sales['SALES_DATE'], y=daily_sales['7-Day MA'], name='7-Day Moving Average', mode='lines'), secondary_y=True)
+
+    # Style the figure
+    fig.update_layout(title_text='Daily Sales and 7-Day Moving Average', template='plotly_dark', title_x=0.5)
+    fig.update_yaxes(title_text="Daily Sales", secondary_y=False)
+    fig.update_yaxes(title_text="Moving Average", secondary_y=True)
     ```
     Now, generate the Python code for the user request.
     """
@@ -106,71 +114,84 @@ def get_python_code(user_request, df_head):
 
 # --- Session State Initialization ---
 if "df" not in st.session_state: st.session_state.df = None
-if "analysis_history" not in st.session_state: st.session_state.analysis_history = []
+if "dashboard_items" not in st.session_state: st.session_state.dashboard_items = []
 
 
 # --- Main Application ---
-st.title("✨ Professional AI-Powered Dashboard")
+st.title("🎨 AI-Powered Dashboard Composer")
 
+# --- Sidebar ---
 with st.sidebar:
     st.header("1. Upload Your Data")
     uploaded_file = st.file_uploader("Choose a file", type=['xlsx', 'parquet', 'csv', 'txt'], label_visibility="collapsed")
-    if uploaded_file: st.session_state.df = load_data(uploaded_file)
+    if uploaded_file:
+        st.session_state.df = load_data(uploaded_file)
+        # Clear old dashboard items when new data is uploaded
+        st.session_state.dashboard_items = []
+
     if st.session_state.df is not None:
         st.success("Data loaded!")
         with st.expander("Data Preview"): st.dataframe(st.session_state.df.head())
+    
     st.divider()
     st.header("Actions")
-    if st.button("Restart Session & Clear History"):
-        st.session_state.clear()
+    if st.button("Clear Dashboard"):
+        st.session_state.dashboard_items = []
         st.rerun()
 
+# --- Main Content ---
 if st.session_state.df is not None:
-    st.header("2. Ask Your Data a Question")
+    st.header("2. Add a Visualization to Your Dashboard")
     
-    # THIS IS THE LINE THAT HAS BEEN CORRECTED
-    col1, col2 = st.columns([5, 1])
-    
-    with col1: text_request = st.text_input("Enter your request", placeholder="e.g., 'Show top 10 stores by sales' or use the mic ->", label_visibility="collapsed")
-    with col2: voice_request = mic_recorder(start_prompt="🎤", stop_prompt="⏹️", key='voice_recorder')
-    
-    user_request = voice_request['text'] if voice_request and 'text' in voice_request else text_request
-    if voice_request and 'text' in voice_request: st.info(f"Heard you say: \"{user_request}\"")
+    user_request = st.text_input(
+        "Enter your request", 
+        placeholder="e.g., 'Show daily sales and a 30-day moving average'",
+        label_visibility="collapsed"
+    )
 
-    if st.button("Generate Output", key="generate") and user_request:
-        with st.spinner("AI is analyzing your data..."):
+    if st.button("Add to Dashboard", key="generate") and user_request:
+        with st.spinner("AI is composing your visualization..."):
             python_code = get_python_code(user_request, st.session_state.df.head())
-            if python_code: st.session_state.analysis_history.insert(0, {"request": user_request, "code": python_code})
-            else: st.error("Could not generate the Python code for your request.")
+            if python_code:
+                # Add the new analysis to our dashboard list
+                st.session_state.dashboard_items.append({
+                    "request": user_request,
+                    "code": python_code
+                })
+            else:
+                st.error("Could not generate the Python code for your request.")
     
     st.divider()
-    if st.session_state.analysis_history:
-        st.header("3. Analysis History")
-        for i, analysis in enumerate(st.session_state.analysis_history):
-            with st.container(border=True):
-                st.subheader(f"Request: \"{analysis['request']}\"")
-                
-                tab1, tab2 = st.tabs([f"📊 Output #{i+1}", f"📄 Code #{i+1}"])
 
-                with tab1:
+    # --- Render the Dynamic Dashboard Grid ---
+    if st.session_state.dashboard_items:
+        st.header("3. Your Composed Dashboard")
+        
+        # Create a 2-column layout
+        cols = st.columns(2)
+        
+        for i, item in enumerate(st.session_state.dashboard_items):
+            # Alternate between the two columns
+            with cols[i % 2]:
+                with st.container(border=True):
+                    st.subheader(f"Request: \"{item['request']}\"")
                     try:
-                        local_scope = {"df": st.session_state.df.copy(), "pd": pd, "px": px, "go": go}
-                        exec(analysis['code'], local_scope)
+                        local_scope = {"df": st.session_state.df.copy(), "pd": pd, "px": px, "go": go, "make_subplots": make_subplots}
+                        exec(item['code'], local_scope)
                         
                         fig = local_scope.get('fig')
-                        result_df = local_scope.get('result_df')
-
                         if fig is not None:
                             st.plotly_chart(fig, use_container_width=True)
-                        elif result_df is not None:
-                            height = (len(result_df) + 1) * 35 + 3
-                            st.dataframe(result_df, height=height, use_container_width=True)
                         else:
-                            st.warning("The generated code ran, but did not produce a `fig` or a `result_df`.")
+                            st.warning("Generated code ran, but did not produce a `fig`.")
+                        
+                        # Add an expander for the code
+                        with st.expander("Show Generated Code"):
+                            st.code(item['code'], language='python')
+                            
                     except Exception as e:
                         st.error("Error executing generated code.")
                         st.code(traceback.format_exc(), language='text')
-                with tab2:
-                    st.code(analysis['code'], language='python')
+
 else:
     st.info("Please upload a data file in the sidebar to get started.")
