@@ -5,7 +5,6 @@ import os
 import traceback
 import plotly.express as px
 import plotly.graph_objects as go
-# --- CHANGE 1: Import make_subplots here ---
 from plotly.subplots import make_subplots
 from streamlit_mic_recorder import mic_recorder
 
@@ -40,12 +39,16 @@ def load_data(uploaded_file):
         elif file_copy.name.endswith('.xlsx'): return pd.read_excel(file_copy)
         elif file_copy.name.endswith('.parquet'): return pd.read_parquet(file_copy)
         elif file_copy.name.endswith('.txt'): return pd.read_csv(file_copy, delimiter='\t')
+        else:
+            st.error("Unsupported file format.")
+            return None
     except Exception as e:
         st.error(f"Error loading file: {e}")
         return None
 
 def get_python_code(user_request, df_head):
     """Generates Python code for complex Plotly charts, including subplots."""
+    # THIS IS THE CORRECTED PROMPT WITH ESCAPED BRACES
     prompt = f"""
     Act as a world-class Python data scientist creating advanced data visualizations with Plotly.
     Your task is to generate a Python script to create a single Plotly Figure, which may contain multiple subplots.
@@ -53,7 +56,8 @@ def get_python_code(user_request, df_head):
     User Request: "{user_request}"
 
     DataFrame Head for context (the full DataFrame is available in the variable `df`):
-    ```    {df_head.to_string()}
+    ```
+    {df_head.to_string()}
     ```
 
     **CRITICAL INSTRUCTIONS:**
@@ -90,8 +94,8 @@ def get_python_code(user_request, df_head):
     daily_sales = df.groupby(df['SALES_DATE'].dt.date)['SALES_VALUE'].sum().reset_index()
     daily_sales['7-Day MA'] = daily_sales['SALES_VALUE'].rolling(window=7).mean()
 
-    # Create figure with secondary y-axis
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    # Create figure with secondary y-axis - with escaped curly braces
+    fig = make_subplots(specs=[[{{'secondary_y': True}}]])
 
     # Add traces
     fig.add_trace(go.Bar(x=daily_sales['SALES_DATE'], y=daily_sales['SALES_VALUE'], name='Daily Sales'), secondary_y=False)
@@ -172,7 +176,6 @@ if st.session_state.df is not None:
                 with st.container(border=True):
                     st.subheader(f"Request: \"{item['request']}\"")
                     try:
-                        # --- CHANGE 2: Add make_subplots to the scope ---
                         local_scope = {
                             "df": st.session_state.df.copy(), 
                             "pd": pd, 
