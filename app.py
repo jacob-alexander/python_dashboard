@@ -26,29 +26,24 @@ if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
     model = genai.GenerativeModel('gemini-1.5-flash-latest')
 else:
-    st.error("Google API Key not found. Please set it in your Streamlit secrets or as an environment variable.")
+    st.error("Google API Key not found...")
     st.stop()
 
 
 # --- Helper Functions ---
 @st.cache_data
 def load_data(uploaded_file):
-    """Caches the data loading to improve performance."""
     try:
         file_copy = uploaded_file
         if file_copy.name.endswith('.csv'): return pd.read_csv(file_copy)
         elif file_copy.name.endswith('.xlsx'): return pd.read_excel(file_copy)
         elif file_copy.name.endswith('.parquet'): return pd.read_parquet(file_copy)
         elif file_copy.name.endswith('.txt'): return pd.read_csv(file_copy, delimiter='\t')
-        else:
-            st.error("Unsupported file format.")
-            return None
     except Exception as e:
         st.error(f"Error loading file: {e}")
         return None
 
 def get_python_code(user_request, df_head):
-    """Generates Python code for complex Plotly charts, including subplots OR a pandas DataFrame."""
     prompt = f"""
     Act as a world-class Python data scientist creating advanced data visualizations with Plotly.
     Your task is to generate a Python script to create EITHER a Plotly Figure OR a pandas DataFrame.
@@ -118,7 +113,6 @@ def get_python_code(user_request, df_head):
 
 @st.cache_data
 def convert_df_to_csv(df):
-    """Caches the conversion of a DataFrame to a CSV string."""
     return df.to_csv(index=False).encode('utf-8')
 
 # --- Session State Initialization ---
@@ -128,13 +122,12 @@ if "dashboard_items" not in st.session_state: st.session_state.dashboard_items =
 # --- Main Application ---
 st.title("🎨 AI-Powered Dashboard Composer")
 
-# --- Sidebar ---
 with st.sidebar:
     st.header("1. Upload Your Data")
     uploaded_file = st.file_uploader("Choose a file", type=['xlsx', 'parquet', 'csv', 'txt'], label_visibility="collapsed")
     if uploaded_file:
         st.session_state.df = load_data(uploaded_file)
-        st.session_state.dashboard_items = [] # Clear dashboard when new data is uploaded
+        st.session_state.dashboard_items = [] 
 
     if st.session_state.df is not None:
         st.success("Data loaded!")
@@ -146,7 +139,6 @@ with st.sidebar:
         st.session_state.dashboard_items = []
         st.rerun()
 
-# --- Main Content ---
 if st.session_state.df is not None:
     st.header("2. Add an Item to Your Dashboard")
     
@@ -164,13 +156,9 @@ if st.session_state.df is not None:
                     "request": user_request,
                     "code": python_code
                 })
-                # We don't need to rerun, Streamlit's state will update the display.
-            else:
-                st.error("Could not generate the Python code for your request.")
     
     st.divider()
 
-    # --- Render the Persistent Dashboard Grid ---
     if st.session_state.dashboard_items:
         st.header("3. Your Composed Dashboard")
         
@@ -199,13 +187,13 @@ if st.session_state.df is not None:
                         else:
                             st.warning("Generated code ran, but did not produce a `fig` or a `result_df`.")
 
-                        # --- Download Buttons ---
                         st.divider()
                         dl_cols = st.columns(3)
                         with dl_cols[0]:
                             if fig is not None:
                                 img_buffer = io.BytesIO()
-                                fig.write_image(img_buffer, format="png", scale=2)
+                                # Use the orca engine
+                                fig.write_image(img_buffer, format="png", scale=2, engine="orca")
                                 st.download_button(
                                     label="Download PNG",
                                     data=img_buffer.getvalue(),
