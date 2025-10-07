@@ -23,7 +23,7 @@ except (KeyError, FileNotFoundError):
 
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    model = genai.GenerativeModel('gemini-flash-lite-latest')
 else:
     st.error("Google API Key not found. Please set it in your Streamlit secrets or as an environment variable.")
     st.stop()
