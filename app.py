@@ -122,6 +122,7 @@ if "prev_df_key" not in st.session_state: st.session_state.prev_df_key = None
 if "multi_files" not in st.session_state: st.session_state.multi_files = {} # filename -> DataFrame
 if "inferred_relations" not in st.session_state: st.session_state.inferred_relations = None
 if "main_query_input" not in st.session_state: st.session_state.main_query_input = ""
+if "pending_query" not in st.session_state: st.session_state.pending_query = None
 if "custom_advice_output" not in st.session_state: st.session_state.custom_advice_output = ""
 
 # --- Google AI API Configuration & Key Manager ---
@@ -980,6 +981,11 @@ with active_tabs[0]:
 # TAB 2: VISUALIZATION DASHBOARD (Index 1)
 # ==========================================
 with active_tabs[1]:
+    # Apply pending updates to main_query_input before widgets are instantiated
+    if st.session_state.get("pending_query") is not None:
+        st.session_state.main_query_input = st.session_state.pending_query
+        st.session_state.pending_query = None
+
     if st.session_state.df is not None:
         # Render profiling suggestions if available
         if st.session_state.suggestions:
@@ -991,7 +997,7 @@ with active_tabs[1]:
             for idx, sug in enumerate(st.session_state.suggestions):
                 with cols[idx]:
                     if st.button(sug, key=f"sug_{idx}", use_container_width=True):
-                        st.session_state.main_query_input = sug
+                        st.session_state.pending_query = sug
                         st.rerun()
 
         st.markdown("### ➕ Add a Visualization")
@@ -1041,7 +1047,7 @@ with active_tabs[1]:
                         
                         if text:
                             st.session_state.voice_input_value = text
-                            st.session_state.main_query_input = text
+                            st.session_state.pending_query = text
                             st.success(f"Transcribed command: \"{text}\"")
                             st.rerun()
                     except Exception as ex:
@@ -1059,7 +1065,7 @@ with active_tabs[1]:
                             "request": user_request,
                             "code": python_code
                         })
-                        st.session_state.main_query_input = "" # Reset
+                        st.session_state.pending_query = "" # Reset
                         st.rerun()
                     else:
                         st.error("Could not construct visualization code for the given request.")
