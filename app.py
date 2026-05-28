@@ -389,7 +389,7 @@ def get_ai_suggestions(df):
 
 
 def generate_data_advisory(df, model_name):
-    """Generates a low-token, concise set of 2 Data Quality Tips and 2 Advanced Analytics Directions based on schema."""
+    """Generates 5 deep business intelligence questions and domain optimization recommendations based on data context."""
     if not st.session_state.get("api_key_active") or df is None:
         return "Configure your Google API Key and import a dataset to receive AI Advisory insights."
         
@@ -403,17 +403,25 @@ def generate_data_advisory(df, model_name):
             cols_summary.append(f"col '{col}': type={dtype}, nulls={nulls}, unique={uniques}")
             
         summary_str = "\n".join(cols_summary[:15]) # Limit columns to prevent token exhaustion
+        preview_str = df.head(15).to_string()
         
         prompt = f"""
-        Act as a senior data analyst and consultant. Analyze this schema summary:
+        Act as an elite Management Consultant and Principal Data Scientist.
+        You are looking at a dataset preview:
         
+        {preview_str}
+        
+        Schema Summary:
         {summary_str}
         
-        Provide exactly:
-        - 2 highly specific Data Quality & Structure Observations (e.g., missing values, data type misalignments, or indexing suggestions).
-        - 2 Advanced Business Analytics Directions (e.g. key aggregations, correlations, or time series trends to query).
+        Task: Analyze the columns, types, and actual values in this 15-row preview to infer the domain (e.g., retail sales, HR, system logs, IoT, finance) and generate:
+        1. **📊 5 Meaningful Business & Analytical Questions** that should be asked about this data to unlock major business value or optimize performance (e.g., identifying seasonal trends, high-value clusters, or bottlenecks). DO NOT ask basic questions; formulate sophisticated analytical inquiries specific to these columns.
+        2. **💡 Optimization Advisory**: A concise, highly strategic advisory summary (under 80 words) detailing what optimization paths (e.g., customer retention, revenue maximization, operational efficiency) these questions aim to resolve.
         
-        Keep your entire response strictly under 130 words. Write in clean, concise, bullet points. Be specific to the columns listed.
+        CRITICAL RULES:
+        - DO NOT talk about data quality, nulls, datatypes, missing indexes, or cleaning.
+        - Focus purely on BUSINESS INSIGHTS, STRATEGIC QUESTIONS, and DOMAIN OPTIMIZATION.
+        - Keep the entire response strictly under 180 words. Write in crisp, professional markdown.
         """
         
         model = genai.GenerativeModel(model_name)
