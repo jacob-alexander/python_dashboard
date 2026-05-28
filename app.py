@@ -107,6 +107,52 @@ def inject_custom_css():
         background-color: #f8fafc !important;
         border-right: 1px solid #e2e8f0;
     }
+    
+    /* Glassmorphic advisor response card matching 'Outfit' theme */
+    .advisor-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.04);
+        margin-top: 20px;
+        margin-bottom: 25px;
+        font-family: 'Outfit', sans-serif !important;
+    }
+    
+    .advisor-header {
+        font-weight: 700;
+        font-size: 1.2rem;
+        color: #4f46e5;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-family: 'Outfit', sans-serif !important;
+    }
+    
+    .advisor-body {
+        color: #334155;
+        font-size: 0.95rem;
+        line-height: 1.7;
+        font-family: 'Outfit', sans-serif !important;
+    }
+    
+    .advisor-body ul, .advisor-body ol {
+        margin-top: 8px;
+        margin-bottom: 8px;
+        padding-left: 20px;
+    }
+    
+    .advisor-body li {
+        margin-bottom: 8px;
+    }
+    
+    .advisor-body strong {
+        color: #4f46e5;
+        font-weight: 600;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -490,13 +536,14 @@ def get_custom_business_advice(df, user_query, model_name):
         The user has asked this complex business/optimization question:
         "{user_query}"
         
-        Task: Formulate a highly targeted, concrete, and numerical business advice answer.
+        Task: Formulate a highly comprehensive, detailed, and numerical strategic business advice.
         
         CRITICAL RULES:
         1. Base your advice directly on the data values, columns, and records in the 15-row preview.
-        2. Keep your answer highly specific and action-oriented. Provide exact numerical recommendations (e.g., "increase price of X by 10% in region Y to capture Z% higher profit").
+        2. Keep your answer highly specific, detailed, and action-oriented. Provide 4 to 5 rich, detailed commercial strategic recommendations with exact numerical calculations and projections (e.g., "reduce Meat margin in Switzerland to 30% to increase volume by 100%").
         3. STRICTLY AVOID corporate jargon, abstract fluff, or data quality/cleaning comments.
-        4. Keep the entire response under 150 words. Write in simple, direct markdown bullet points.
+        4. Keep the response under 400 words to allow for deep strategic advice.
+        5. Write your response strictly as standard, clean HTML tags (such as <p>, <strong>, <ul>, and <li>). Do NOT wrap the response in a markdown code block (no ```html tags). Output the raw HTML tags directly.
         """
         
         model = genai.GenerativeModel(model_name)
@@ -1124,8 +1171,14 @@ with active_tabs[1]:
                     st.rerun()
                     
         if st.session_state.get("custom_advice_output"):
-            st.info("💡 **AI Data Advisor Strategic Advice:**")
-            st.markdown(st.session_state.custom_advice_output)
+            st.markdown(f"""
+            <div class="advisor-card">
+                <div class="advisor-header">💡 AI Data Advisor Strategic Advice</div>
+                <div class="advisor-body">
+                    {st.session_state.custom_advice_output}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
  
         # Render Dashboard Workspace
         if st.session_state.dashboard_items:
