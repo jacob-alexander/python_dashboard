@@ -145,6 +145,7 @@ if system_key:
             "Custom Google API Key",
             key="custom_api_key",
             type="password",
+            autocomplete="new-password",
             help="Enter your own Google Cloud Gemini API key to override the secure system secret.",
             placeholder="AIzaSy..."
         )
@@ -156,6 +157,7 @@ else:
         "Google API Key",
         value=st.session_state.get("google_api_key", ""),
         type="password",
+        autocomplete="new-password",
         help="Enter your Google Cloud Gemini API key. It will be stored securely in session state.",
         placeholder="AIzaSy..."
     )
