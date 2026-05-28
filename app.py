@@ -32,35 +32,36 @@ def inject_custom_css():
     }
     
     .stApp {
-        background: linear-gradient(135deg, #0f111a 0%, #161824 100%);
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 50%, #e0e7ff 100%);
     }
     
-    /* Sleek card styling for dashboards */
+    /* Sleek card styling for light mode glassmorphism */
     div[data-testid="stVerticalBlockBorder"] {
-        background: rgba(22, 28, 45, 0.6);
+        background: rgba(255, 255, 255, 0.7);
         backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.5);
         border-radius: 18px;
         padding: 24px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.05);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        color: #1e293b !important;
     }
     
     div[data-testid="stVerticalBlockBorder"]:hover {
         transform: translateY(-2px);
-        border-color: rgba(99, 102, 241, 0.4);
-        box-shadow: 0 15px 40px rgba(99, 102, 241, 0.15);
+        border-color: rgba(99, 102, 241, 0.3);
+        box-shadow: 0 15px 40px rgba(99, 102, 241, 0.12);
     }
     
-    /* Glassmorphic pills for suggestion chips */
+    /* Glassmorphic pills for suggestion chips in light mode */
     .suggestion-chip {
         display: inline-block;
         padding: 8px 16px;
         margin: 6px;
         border-radius: 20px;
-        background: rgba(99, 102, 241, 0.15);
-        color: #a5b4fc;
-        border: 1px solid rgba(99, 102, 241, 0.3);
+        background: rgba(99, 102, 241, 0.08);
+        color: #4f46e5;
+        border: 1px solid rgba(99, 102, 241, 0.2);
         cursor: pointer;
         font-weight: 500;
         font-size: 0.85rem;
@@ -68,15 +69,15 @@ def inject_custom_css():
     }
     
     .suggestion-chip:hover {
-        background: rgba(99, 102, 241, 0.3);
-        color: #ffffff;
-        border-color: rgba(99, 102, 241, 0.6);
+        background: rgba(99, 102, 241, 0.18);
+        color: #4338ca;
+        border-color: rgba(99, 102, 241, 0.4);
         transform: scale(1.03);
     }
 
-    /* Style the main title */
+    /* Style the main title with a bright gradient */
     .main-title {
-        background: linear-gradient(90deg, #818cf8 0%, #c084fc 50%, #f472b6 100%);
+        background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-weight: 800;
@@ -85,20 +86,26 @@ def inject_custom_css():
         letter-spacing: -0.5px;
     }
     
-    /* Input & general widgets */
+    /* Input & general widgets in light mode */
     .stTextInput>div>div>input {
-        background-color: rgba(15, 23, 42, 0.6) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        background-color: rgba(255, 255, 255, 0.9) !important;
+        border: 1px solid rgba(99, 102, 241, 0.2) !important;
         border-radius: 12px !important;
-        color: #f8fafc !important;
+        color: #1e293b !important;
     }
     
-    /* Make code elements look premium */
+    /* Make code elements look premium in light mode */
     code {
-        color: #f472b6 !important;
-        background-color: rgba(30, 41, 59, 0.5) !important;
+        color: #be185d !important;
+        background-color: rgba(243, 244, 246, 0.9) !important;
         border-radius: 6px;
         padding: 2px 6px;
+    }
+    
+    /* Let sidebar look clean and light */
+    section[data-testid="stSidebar"] {
+        background-color: #f8fafc !important;
+        border-right: 1px solid #e2e8f0;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -496,7 +503,7 @@ def get_python_code(user_request, df_head, model_name):
     3. The code's final output MUST assign a fully customized Plotly Figure object to the variable `fig`.
     4. **SUBPLOTS:** If the user asks for multiple charts, grids, or multi-metric views, you MUST import and use `from plotly.subplots import make_subplots` to return a unified `fig`.
     5. **SYNTAX RULES:** Never use `px.subplots()` or `px.heatmap()`. Use `make_subplots` and `px.imshow()` instead.
-    6. **AESTHETICS:** Style the figure beautifully. Use the template `'plotly_dark'` to match the dark theme. Choose professional color schemes (e.g. indigo `#6366f1`, emerald `#10b981`, fuchsia `#d946ef`, amber `#f59e0b`). Ensure comfortable margins (`margin=dict(l=40, r=40, t=60, b=40)`), enable grid lines, and align the title to the center (`title_x=0.5`).
+    6. **AESTHETICS:** Style the figure beautifully. Use the template `'plotly_white'` to match the light theme. Choose professional color schemes (e.g. indigo `#4f46e5`, emerald `#059669`, fuchsia `#db2777`, amber `#d97706`). Ensure comfortable margins (`margin=dict(l=40, r=40, t=60, b=40)`), enable grid lines, and align the title to the center (`title_x=0.5`).
 
     **EXAMPLE 1: Heatmaps**
     import pandas as pd
@@ -504,7 +511,7 @@ def get_python_code(user_request, df_head, model_name):
     numeric_df = df.select_dtypes(include='number')
     corr_matrix = numeric_df.corr()
     fig = px.imshow(corr_matrix, text_auto=True, title="Correlation Heatmap", color_continuous_scale='Viridis')
-    fig.update_layout(template='plotly_dark', title_x=0.5, margin=dict(t=60, b=40, l=40, r=40))
+    fig.update_layout(template='plotly_white', title_x=0.5, margin=dict(t=60, b=40, l=40, r=40))
 
     **EXAMPLE 2: Subplots / Secondary Y-Axis**
     import pandas as pd
@@ -516,10 +523,10 @@ def get_python_code(user_request, df_head, model_name):
     daily['MovingAvg'] = daily['VALUE'].rolling(window=7).mean()
 
     fig = make_subplots(specs=[[{{"secondary_y": True}}]])
-    fig.add_trace(go.Bar(x=daily['DATE'], y=daily['VALUE'], name='Daily Value', marker_color='#6366f1'), secondary_y=False)
-    fig.add_trace(go.Scatter(x=daily['DATE'], y=daily['MovingAvg'], name='7-Day Average', line=dict(color='#10b981', width=3)), secondary_y=True)
+    fig.add_trace(go.Bar(x=daily['DATE'], y=daily['VALUE'], name='Daily Value', marker_color='#4f46e5'), secondary_y=False)
+    fig.add_trace(go.Scatter(x=daily['DATE'], y=daily['MovingAvg'], name='7-Day Average', line=dict(color='#059669', width=3)), secondary_y=True)
 
-    fig.update_layout(title_text='Daily Metrics & Rolling Averages', template='plotly_dark', title_x=0.5)
+    fig.update_layout(title_text='Daily Metrics & Rolling Averages', template='plotly_white', title_x=0.5)
     fig.update_yaxes(title_text="Value", secondary_y=False)
     fig.update_yaxes(title_text="Moving Average", secondary_y=True)
 
@@ -823,8 +830,18 @@ with active_tabs[0]:
                             if loaded_df is not None:
                                 st.session_state.multi_files[fn] = loaded_df
                         st.session_state.inferred_relations = None # Reset
-                        st.session_state.df = None # Reset active
-                        st.success(f"Successfully loaded {len(st.session_state.multi_files)} files into memory!")
+                        
+                        # Automatically activate the first successfully loaded file!
+                        if st.session_state.multi_files:
+                            first_file = list(st.session_state.multi_files.keys())[0]
+                            st.session_state.df = st.session_state.multi_files[first_file]
+                            st.session_state.loaded_filename = first_file
+                            st.session_state.suggestions = get_ai_suggestions(st.session_state.df)
+                            st.session_state.data_advisory = generate_data_advisory(st.session_state.df, st.session_state.selected_model)
+                            st.session_state.custom_advice_output = ""
+                            st.success(f"Successfully loaded {len(st.session_state.multi_files)} files! `{first_file}` is set as your active dataset.")
+                        else:
+                            st.session_state.df = None
                         st.rerun()
         else:
             st.info("No supported files found in this directory. Paste a valid local folder path in the sidebar to scan.")
