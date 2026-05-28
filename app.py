@@ -865,48 +865,51 @@ with st.sidebar:
 # TAB 1: DATA & AI JOIN STUDIO (Index 0)
 # ==========================================
 with active_tabs[0]:
-    st.markdown("### 📂 Load Datasets from Directory")
-    st.markdown("<p style='color: #64748b; font-size:0.9rem; margin-top:-8px;'>Scan your active local folder, select multiple files to load, union similar datasets automatically, or build complex joins interactively.</p>", unsafe_allow_html=True)
+    st.markdown("### 📥 Load Datasets into Memory")
+    st.markdown("<p style='color: #64748b; font-size:0.9rem; margin-top:-8px;'>Choose to drag and drop files from your computer (ideal for Streamlit Cloud) or scan a local directory folder (for local development).</p>", unsafe_allow_html=True)
     
+    # Import Method Selector
+    import_method = st.radio(
+        "Import Method Selection",
+        ["📤 Drag & Drop Uploader (Cloud & Local)", "📁 Local Folder Scanner (Local Dev Only)"],
+        horizontal=True,
+        label_visibility="collapsed"
+    )
+    
+    st.write("") # Spacer
     cols = st.columns([8, 4])
     
     with cols[0]:
-        st.markdown(f"**Path:** `{st.session_state.folder_path}`")
-        found_files = scan_directory(st.session_state.folder_path)
-        
-        if found_files:
-            st.write("Select files to import into active memory:")
-            selected_files = []
+        if "Drag & Drop" in import_method:
+            st.markdown("#### 📤 Drag & Drop File Uploader")
+            uploaded_files = st.file_uploader(
+                "Upload files",
+                type=['csv', 'xlsx', 'xls', 'parquet', 'txt', 'tsv', 'json', 'jsonl', 'xml', 'html', 'db', 'sqlite', 'pdf', 'png', 'jpg', 'jpeg'],
+                accept_multiple_files=True,
+                help="Select one or multiple analytical/data files to import."
+            )
             
-            # Render file selectors in columns
-            file_grid_cols = st.columns(3)
-            for idx, filename in enumerate(found_files):
-                with file_grid_cols[idx % 3]:
-                    checkbox_key = f"file_check_{filename}"
-                    is_checked = st.checkbox(f"📄 {filename}", key=checkbox_key)
-                    if is_checked:
-                        selected_files.append(filename)
-            
-            # Load selected files
-            st.write("") # Spacer
-            if st.button("📥 Import Checked Files", use_container_width=True):
-                if not selected_files:
-                    st.warning("Please check at least one file to import.")
-                else:
-                    with st.spinner("Loading selected files into workspace memory..."):
-                        st.session_state.multi_files = {}
-                        for fn in selected_files:
-                            full_path = os.path.join(st.session_state.folder_path, fn)
-                            loaded_df = load_data(full_path)
+            if uploaded_files:
+                if st.button("📥 Import Uploaded Files", use_container_width=True):
+                    with st.spinner("Processing and loading uploaded files..."):
+                        successfully_loaded = 0
+                        first_file = None
+                        for uploaded_file in uploaded_files:
+                            fn = uploaded_file.name
+                            loaded_df = load_data(uploaded_file)
                             if loaded_df is not None:
                                 st.session_state.multi_files[fn] = loaded_df
+                                successfully_loaded += 1
+                                if first_file is None:
+                                    first_file = fn
+                        
                         st.session_state.inferred_relations = None # Reset
                         
-                        # Automatically activate the first successfully loaded file!
-                        if st.session_state.multi_files:
-                            first_file = list(st.session_state.multi_files.keys())[0]
-                            st.session_state.df = st.session_state.multi_files[first_file]
-                            st.session_state.loaded_filename = first_file
+                        if successfully_loaded > 0:
+                            # Set first imported file as active
+                            active_file = first_file if first_file else list(st.session_state.multi_files.keys())[0]
+                            st.session_state.df = st.session_state.multi_files[active_file]
+                            st.session_state.loaded_filename = active_file
                             st.session_state.suggestions = get_ai_suggestions(st.session_state.df)
                             st.session_state.data_advisory = generate_data_advisory(st.session_state.df, st.session_state.selected_model)
                             st.session_state.auto_strategic_advice = get_custom_business_advice(
@@ -915,12 +918,62 @@ with active_tabs[0]:
                                 st.session_state.selected_model
                             )
                             st.session_state.custom_advice_output = ""
-                            st.success(f"Successfully loaded {len(st.session_state.multi_files)} files! `{first_file}` is set as your active dataset.")
+                            st.success(f"Successfully loaded {successfully_loaded} files! `{active_file}` is set as your active dataset.")
                         else:
-                            st.session_state.df = None
+                            st.error("No valid datasets could be parsed from the uploaded files.")
                         st.rerun()
         else:
-            st.info("No supported files found in this directory. Paste a valid local folder path in the sidebar to scan.")
+            st.markdown("#### 📁 Local Folder Scanner")
+            st.markdown(f"**Scanning Path:** `{st.session_state.folder_path}`")
+            found_files = scan_directory(st.session_state.folder_path)
+            
+            if found_files:
+                st.write("Select files to import into active memory:")
+                selected_files = []
+                
+                # Render file selectors in columns
+                file_grid_cols = st.columns(3)
+                for idx, filename in enumerate(found_files):
+                    with file_grid_cols[idx % 3]:
+                        checkbox_key = f"file_check_{filename}"
+                        is_checked = st.checkbox(f"📄 {filename}", key=checkbox_key)
+                        if is_checked:
+                            selected_files.append(filename)
+                
+                # Load selected files
+                st.write("") # Spacer
+                if st.button("📥 Import Checked Files", use_container_width=True):
+                    if not selected_files:
+                        st.warning("Please check at least one file to import.")
+                    else:
+                        with st.spinner("Loading selected files into workspace memory..."):
+                            st.session_state.multi_files = {}
+                            for fn in selected_files:
+                                full_path = os.path.join(st.session_state.folder_path, fn)
+                                loaded_df = load_data(full_path)
+                                if loaded_df is not None:
+                                    st.session_state.multi_files[fn] = loaded_df
+                            st.session_state.inferred_relations = None # Reset
+                            
+                            # Automatically activate the first successfully loaded file!
+                            if st.session_state.multi_files:
+                                first_file = list(st.session_state.multi_files.keys())[0]
+                                st.session_state.df = st.session_state.multi_files[first_file]
+                                st.session_state.loaded_filename = first_file
+                                st.session_state.suggestions = get_ai_suggestions(st.session_state.df)
+                                st.session_state.data_advisory = generate_data_advisory(st.session_state.df, st.session_state.selected_model)
+                                st.session_state.auto_strategic_advice = get_custom_business_advice(
+                                    st.session_state.df,
+                                    "Identify specific profit margin adjustments, price optimization strategies, and volume growth opportunities across our countries and item types to maximize commercial revenues.",
+                                    st.session_state.selected_model
+                                )
+                                st.session_state.custom_advice_output = ""
+                                st.success(f"Successfully loaded {len(st.session_state.multi_files)} files! `{first_file}` is set as your active dataset.")
+                            else:
+                                st.session_state.df = None
+                            st.rerun()
+            else:
+                st.info("No supported files found in this directory. Paste a valid local folder path in the sidebar to scan.")
 
     with cols[1]:
         with st.container(border=True):
