@@ -387,6 +387,41 @@ def get_ai_suggestions(df):
         ]
 
 
+def generate_data_advisory(df, model_name):
+    """Generates a low-token, concise set of 2 Data Quality Tips and 2 Advanced Analytics Directions based on schema."""
+    if not st.session_state.get("api_key_active") or df is None:
+        return "Configure your Google API Key and import a dataset to receive AI Advisory insights."
+        
+    try:
+        # Build schema summary
+        cols_summary = []
+        for col in df.columns:
+            dtype = str(df[col].dtype)
+            nulls = df[col].isnull().sum()
+            uniques = df[col].nunique()
+            cols_summary.append(f"col '{col}': type={dtype}, nulls={nulls}, unique={uniques}")
+            
+        summary_str = "\n".join(cols_summary[:15]) # Limit columns to prevent token exhaustion
+        
+        prompt = f"""
+        Act as a senior data analyst and consultant. Analyze this schema summary:
+        
+        {summary_str}
+        
+        Provide exactly:
+        - 2 highly specific Data Quality & Structure Observations (e.g., missing values, data type misalignments, or indexing suggestions).
+        - 2 Advanced Business Analytics Directions (e.g. key aggregations, correlations, or time series trends to query).
+        
+        Keep your entire response strictly under 130 words. Write in clean, concise, bullet points. Be specific to the columns listed.
+        """
+        
+        model = genai.GenerativeModel(model_name)
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        return f"Advisory generation skipped: {e}"
+
+
 # --- Core AI Code Generator ---
 def get_python_code(user_request, df_head, model_name):
     """Uses Gemini to generate custom, executable Plotly Python code to compose dashboards."""
@@ -749,6 +784,7 @@ with active_tabs[1]:
                     st.session_state.df = st.session_state.multi_files[only_file]
                     st.session_state.loaded_filename = only_file
                     st.session_state.suggestions = get_ai_suggestions(st.session_state.df)
+                    st.session_state.data_advisory = generate_data_advisory(st.session_state.df, st.session_state.selected_model)
                 
                 for fn, df in st.session_state.multi_files.items():
                     card_cols = st.columns([7, 5])
@@ -760,6 +796,7 @@ with active_tabs[1]:
                             st.session_state.loaded_filename = fn
                             st.session_state.dashboard_items = [] # Reset dashboard
                             st.session_state.suggestions = get_ai_suggestions(df)
+                            st.session_state.data_advisory = generate_data_advisory(df, st.session_state.selected_model)
                             st.success(f"`{fn}` is now the active dataset!")
                             st.rerun()
             else:
@@ -864,6 +901,7 @@ with active_tabs[1]:
                         st.session_state.loaded_filename = f"Join: {left_table_name} [{left_key}] = {right_table_name} [{right_key}]"
                         st.session_state.dashboard_items = [] # Reset dashboard
                         st.session_state.suggestions = get_ai_suggestions(merged_df)
+                        st.session_state.data_advisory = generate_data_advisory(merged_df, st.session_state.selected_model)
                         
                         st.success(f"Tables successfully joined! Resulting dataset has `{merged_df.shape[0]}` rows and `{merged_df.shape[1]}` columns. It is now loaded as your active dataset in Tab 1!")
                     except Exception as ex:
@@ -960,6 +998,12 @@ with active_tabs[0]:
                     else:
                         st.error("Could not construct visualization code for the given request.")
 
+        # AI Data Advisory panel
+        if st.session_state.get("data_advisory"):
+            st.write("") # Spacer
+            with st.expander("🧠 AI Data Advisory & Optimization Insights", expanded=True):
+                st.markdown(st.session_state.data_advisory)
+ 
         # Render Dashboard Workspace
         if st.session_state.dashboard_items:
             st.divider()
