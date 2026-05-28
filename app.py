@@ -114,6 +114,7 @@ if "loaded_filename" not in st.session_state: st.session_state.loaded_filename =
 if "prev_df_key" not in st.session_state: st.session_state.prev_df_key = None
 if "multi_files" not in st.session_state: st.session_state.multi_files = {} # filename -> DataFrame
 if "inferred_relations" not in st.session_state: st.session_state.inferred_relations = None
+if "main_query_input" not in st.session_state: st.session_state.main_query_input = ""
 
 # --- Google AI API Configuration & Key Manager ---
 st.sidebar.markdown("### 🔑 API Key & Model Configuration")
@@ -348,7 +349,7 @@ def get_ai_suggestions(df):
         {schema_str}
         
         DataFrame head preview:
-        {df.head(3).to_string()}
+        {df.head(15).to_string()}
         
         Task: Provide exactly 5 distinct, highly insightful, and complex charting queries that a business stakeholder would want to ask about this specific dataset to uncover hidden trends or insights.
         
@@ -642,7 +643,7 @@ def infer_relationships_with_gemini(multi_files, model_name):
             schemas = []
             for name, df in multi_files.items():
                 col_types = [f"{col} ({str(df[col].dtype)})" for col in df.columns]
-                schemas.append(f"Table: `{name}`\nColumns: {', '.join(col_types)}\nHead Preview:\n{df.head(2).to_string()}")
+                schemas.append(f"Table: `{name}`\nColumns: {', '.join(col_types)}\nHead Preview:\n{df.head(15).to_string()}")
                 
             schemas_str = "\n\n---\n\n".join(schemas)
             
@@ -932,7 +933,6 @@ with active_tabs[0]:
         # Text input for request
         user_request = st.text_input(
             "Enter your query",
-            value=st.session_state.voice_input_value,
             placeholder="e.g., 'Show daily sales as a bar chart and the 14-day rolling average as a trendline'",
             key="main_query_input",
             label_visibility="collapsed"
@@ -987,7 +987,7 @@ with active_tabs[0]:
                 st.error("Please configure your Google API Key in the sidebar first to generate visualizations.")
             else:
                 with st.spinner("✨ Generating advanced Plotly code..."):
-                    python_code = get_python_code(user_request, st.session_state.df.head(), st.session_state.selected_model)
+                    python_code = get_python_code(user_request, st.session_state.df.head(15), st.session_state.selected_model)
                     if python_code:
                         st.session_state.dashboard_items.append({
                             "request": user_request,
@@ -1003,6 +1003,11 @@ with active_tabs[0]:
             st.write("") # Spacer
             with st.expander("🧠 AI Data Advisory & Optimization Insights", expanded=True):
                 st.markdown(st.session_state.data_advisory)
+
+        # Active Dataset Preview panel
+        st.write("") # Spacer
+        with st.expander("📄 Active Dataset Preview (First 15 Rows)", expanded=False):
+            st.dataframe(st.session_state.df.head(15), use_container_width=True)
  
         # Render Dashboard Workspace
         if st.session_state.dashboard_items:
