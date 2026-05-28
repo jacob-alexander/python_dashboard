@@ -389,7 +389,7 @@ def get_ai_suggestions(df):
 
 
 def generate_data_advisory(df, model_name):
-    """Generates 5 deep business intelligence questions and domain optimization recommendations based on data context."""
+    """Generates concrete, numerical business observations and actionable optimization advice based on actual data values."""
     if not st.session_state.get("api_key_active") or df is None:
         return "Configure your Google API Key and import a dataset to receive AI Advisory insights."
         
@@ -406,22 +406,24 @@ def generate_data_advisory(df, model_name):
         preview_str = df.head(15).to_string()
         
         prompt = f"""
-        Act as an elite Management Consultant and Principal Data Scientist.
-        You are looking at a dataset preview:
+        Act as a highly precise, hands-on Data Auditor and Commercial Business Analyst.
+        You are looking at a dataset preview showing 15 actual rows of data:
         
         {preview_str}
         
         Schema Summary:
         {summary_str}
         
-        Task: Analyze the columns, types, and actual values in this 15-row preview to infer the domain (e.g., retail sales, HR, system logs, IoT, finance) and generate:
-        1. **📊 5 Meaningful Business & Analytical Questions** that should be asked about this data to unlock major business value or optimize performance (e.g., identifying seasonal trends, high-value clusters, or bottlenecks). DO NOT ask basic questions; formulate sophisticated analytical inquiries specific to these columns.
-        2. **💡 Optimization Advisory**: A concise, highly strategic advisory summary (under 80 words) detailing what optimization paths (e.g., customer retention, revenue maximization, operational efficiency) these questions aim to resolve.
+        Task: Inspect the actual records, columns, and numbers in the 15-row preview to extract highly specific, concrete numerical trends and action points. Generate exactly:
+        
+        1. **📊 Analytical Inquiries**: 3 to 4 hyper-specific data observations detailing actual changes, drops, spikes, or relationships with numbers, countries, item types, or categories visible in the data (e.g., "sales in country Austria for item type cereal down by 50%", "Clothes down by 75% due to high margin"). Keep them extremely concrete, numeric, and simple.
+        2. **💡 Optimization Advisory**: 2 to 3 actionable, numerical business recommendations with specific action values (e.g., "reduce margin to 30% for Meat in Switzerland, you will increase the sales to 100%").
         
         CRITICAL RULES:
-        - DO NOT talk about data quality, nulls, datatypes, missing indexes, or cleaning.
-        - Focus purely on BUSINESS INSIGHTS, STRATEGIC QUESTIONS, and DOMAIN OPTIMIZATION.
-        - Keep the entire response strictly under 180 words. Write in crisp, professional markdown.
+        - DO NOT write corporate jargon, buzzwords, or abstract business theory (like 'Fulfillment Velocity', 'consolidated contribution margin', 'consolidated EBITDA', 'capital efficiency').
+        - Avoid bullet headings with high-level titles. Just output the concrete observations and recommendations directly as clear, simple sentences.
+        - Ensure every observation and advice refers to actual values, countries, products, and specific estimated percentages/numbers.
+        - Keep the entire response strictly under 180 words. Write in crisp, clean, direct markdown.
         """
         
         model = genai.GenerativeModel(model_name)
