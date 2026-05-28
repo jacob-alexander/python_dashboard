@@ -129,20 +129,36 @@ if "custom_advice_output" not in st.session_state: st.session_state.custom_advic
 st.sidebar.markdown("### 🔑 API Key & Model Configuration")
 
 # Try obtaining key from secrets/env as fallback
-default_key = ""
+system_key = ""
 try:
-    default_key = st.secrets["GOOGLE_API_KEY"]
+    system_key = st.secrets["GOOGLE_API_KEY"]
 except (KeyError, FileNotFoundError):
-    default_key = os.getenv("GOOGLE_API_KEY", "")
+    system_key = os.getenv("GOOGLE_API_KEY", "")
 
-# Key Input with masking
-api_key = st.sidebar.text_input(
-    "Google API Key",
-    value=st.session_state.get("google_api_key", default_key),
-    type="password",
-    help="Enter your Google Cloud Gemini API key. It will be stored securely in session state.",
-    placeholder="AIzaSy..."
-)
+# Hide the API key input completely if loaded from the system secrets, showing only a secure success badge.
+api_key = ""
+if system_key:
+    st.sidebar.info("🔒 API Key loaded securely from Secrets")
+    override_key = st.sidebar.checkbox("Use a custom API Key instead", value=False)
+    if override_key:
+        api_key = st.sidebar.text_input(
+            "Custom Google API Key",
+            value=st.session_state.get("google_api_key", ""),
+            type="password",
+            help="Enter a custom API key to override the secure system secret.",
+            placeholder="AIzaSy..."
+        )
+    else:
+        api_key = system_key
+else:
+    # No system key is present, show standard input field
+    api_key = st.sidebar.text_input(
+        "Google API Key",
+        value=st.session_state.get("google_api_key", ""),
+        type="password",
+        help="Enter your Google Cloud Gemini API key. It will be stored securely in session state.",
+        placeholder="AIzaSy..."
+    )
 
 # Model Selection (strictly validated models)
 selected_model = st.sidebar.selectbox(
@@ -161,7 +177,11 @@ if api_key:
         st.session_state.google_api_key = api_key
         st.session_state.api_key_active = True
         api_active = True
-        st.sidebar.success("🟢 API Key Configured & Active")
+        is_system = system_key and not (override_key if 'override_key' in locals() else False)
+        if is_system:
+            st.sidebar.success("🟢 API Key Active (System Secret)")
+        else:
+            st.sidebar.success("🟢 API Key Active (Custom)")
     except Exception as e:
         st.sidebar.error(f"🔴 API Key Error: {e}")
         st.session_state.api_key_active = False
