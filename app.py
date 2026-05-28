@@ -133,9 +133,9 @@ api_key = st.sidebar.text_input(
 # Model Selection
 selected_model = st.sidebar.selectbox(
     "Gemini Model",
-    ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"],
+    ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash", "gemini-2.5-flash"],
     index=0,
-    help="Choose the Gemini model version. gemini-2.0-flash is recommended for speed and accuracy."
+    help="Choose the Gemini model version. gemini-1.5-flash is highly stable and widely accessible."
 )
 st.session_state.selected_model = selected_model
 
