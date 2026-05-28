@@ -115,6 +115,7 @@ if "prev_df_key" not in st.session_state: st.session_state.prev_df_key = None
 if "multi_files" not in st.session_state: st.session_state.multi_files = {} # filename -> DataFrame
 if "inferred_relations" not in st.session_state: st.session_state.inferred_relations = None
 if "main_query_input" not in st.session_state: st.session_state.main_query_input = ""
+if "custom_advice_output" not in st.session_state: st.session_state.custom_advice_output = ""
 
 # --- Google AI API Configuration & Key Manager ---
 st.sidebar.markdown("### 🔑 API Key & Model Configuration")
@@ -389,7 +390,7 @@ def get_ai_suggestions(df):
 
 
 def generate_data_advisory(df, model_name):
-    """Generates concrete, numerical business observations and actionable optimization advice based on actual data values."""
+    """Generates concrete, numerical business observations, actionable optimization advice, and recommended graph requests."""
     if not st.session_state.get("api_key_active") or df is None:
         return "Configure your Google API Key and import a dataset to receive AI Advisory insights."
         
@@ -416,14 +417,15 @@ def generate_data_advisory(df, model_name):
         
         Task: Inspect the actual records, columns, and numbers in the 15-row preview to extract highly specific, concrete numerical trends and action points. Generate exactly:
         
-        1. **📊 Analytical Inquiries**: 3 to 4 hyper-specific data observations detailing actual changes, drops, spikes, or relationships with numbers, countries, item types, or categories visible in the data (e.g., "sales in country Austria for item type cereal down by 50%", "Clothes down by 75% due to high margin"). Keep them extremely concrete, numeric, and simple.
-        2. **💡 Optimization Advisory**: 2 to 3 actionable, numerical business recommendations with specific action values (e.g., "reduce margin to 30% for Meat in Switzerland, you will increase the sales to 100%").
+        1. **📊 Analytical Inquiries**: 5 to 6 hyper-specific data observations detailing actual changes, drops, spikes, or relationships with numbers, countries, item types, or categories visible in the data (e.g., "sales in country Austria for item type cereal down by 50%", "Clothes down by 75% due to high margin"). Keep them extremely concrete, numeric, and simple.
+        2. **💡 Optimization Advisory**: 4 to 5 actionable, numerical business recommendations with specific action values (e.g., "reduce margin to 30% for Meat in Switzerland, you will increase the sales to 100%").
+        3. **📈 Suggested Graph Requests**: For each analytical inquiry, suggest the exact natural language query the user should type in the composer to visualize it (e.g., "Compare cereal sales in Austria vs other European countries").
         
         CRITICAL RULES:
         - DO NOT write corporate jargon, buzzwords, or abstract business theory (like 'Fulfillment Velocity', 'consolidated contribution margin', 'consolidated EBITDA', 'capital efficiency').
-        - Avoid bullet headings with high-level titles. Just output the concrete observations and recommendations directly as clear, simple sentences.
+        - Avoid bullet headings with high-level titles. Just output the concrete observations, recommendations, and graph requests directly as clear, simple sentences.
         - Ensure every observation and advice refers to actual values, countries, products, and specific estimated percentages/numbers.
-        - Keep the entire response strictly under 180 words. Write in crisp, clean, direct markdown.
+        - Keep the entire response strictly under 280 words. Write in crisp, clean, direct markdown.
         """
         
         model = genai.GenerativeModel(model_name)
@@ -431,6 +433,47 @@ def generate_data_advisory(df, model_name):
         return response.text.strip()
     except Exception as e:
         return f"Advisory generation skipped: {e}"
+
+
+def get_custom_business_advice(df, user_query, model_name):
+    """Formulates highly targeted, concrete, and numerical business advice based on a specific user inquiry and 15-row preview."""
+    try:
+        cols_summary = []
+        for col in df.columns:
+            dtype = str(df[col].dtype)
+            nulls = df[col].isnull().sum()
+            uniques = df[col].nunique()
+            cols_summary.append(f"col '{col}': type={dtype}, nulls={nulls}, unique={uniques}")
+            
+        summary_str = "\n".join(cols_summary[:15])
+        preview_str = df.head(15).to_string()
+        
+        prompt = f"""
+        Act as an elite Data Auditor and Strategic Business Advisor.
+        You are looking at a dataset preview showing 15 actual rows of data:
+        
+        {preview_str}
+        
+        Schema Summary:
+        {summary_str}
+        
+        The user has asked this complex business/optimization question:
+        "{user_query}"
+        
+        Task: Formulate a highly targeted, concrete, and numerical business advice answer.
+        
+        CRITICAL RULES:
+        1. Base your advice directly on the data values, columns, and records in the 15-row preview.
+        2. Keep your answer highly specific and action-oriented. Provide exact numerical recommendations (e.g., "increase price of X by 10% in region Y to capture Z% higher profit").
+        3. STRICTLY AVOID corporate jargon, abstract fluff, or data quality/cleaning comments.
+        4. Keep the entire response under 150 words. Write in simple, direct markdown bullet points.
+        """
+        
+        model = genai.GenerativeModel(model_name)
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        return f"Could not generate advice: {e}"
 
 
 # --- Core AI Code Generator ---
@@ -709,12 +752,12 @@ def render_mermaid(mermaid_code):
 
 # --- Main Web App Interface ---
 st.markdown('<h1 class="main-title">🎨 AI-Powered Dashboard Composer</h1>', unsafe_allow_html=True)
-st.markdown("<p style='color: #94a3b8; font-size:1.1rem; margin-top:-10px; margin-bottom: 25px;'>Upload datasets, scan local folders, union matching files, infer visual relationships, and compose Plotly dashboards with voice or text.</p>", unsafe_allow_html=True)
+st.markdown("<p style='color: #94a3b8; font-size:1.1rem; margin-top:-10px; margin-bottom: 25px;'>Scan local folders first, import/join datasets, and compose interactive Plotly dashboards with voice or text advice.</p>", unsafe_allow_html=True)
 
-# Define Tabs at the top
-active_tabs = st.tabs(["🚀 Visualization Dashboard", "📁 Data & AI Join Studio"])
+# Define Tabs (Data & AI Join Studio comes first!)
+active_tabs = st.tabs(["📁 Data & AI Join Studio", "🚀 Visualization Dashboard"])
 
-# --- Sidebar: Shared configuration ---
+# --- Sidebar: Shared directory configuration ---
 with st.sidebar:
     st.markdown("### 📁 1. Active Workspace Directory")
     default_dir = os.path.abspath(".")
@@ -736,13 +779,14 @@ with st.sidebar:
         st.session_state.loaded_filename = ""
         st.session_state.multi_files = {}
         st.session_state.inferred_relations = None
+        st.session_state.custom_advice_output = ""
         st.rerun()
 
 
 # ==========================================
-# TAB 2: DATA & AI JOIN STUDIO
+# TAB 1: DATA & AI JOIN STUDIO (Index 0)
 # ==========================================
-with active_tabs[1]:
+with active_tabs[0]:
     st.markdown("### 📂 Load Datasets from Directory")
     st.markdown("<p style='color: #64748b; font-size:0.9rem; margin-top:-8px;'>Scan your active local folder, select multiple files to load, union similar datasets automatically, or build complex joins interactively.</p>", unsafe_allow_html=True)
     
@@ -760,7 +804,6 @@ with active_tabs[1]:
             file_grid_cols = st.columns(3)
             for idx, filename in enumerate(found_files):
                 with file_grid_cols[idx % 3]:
-                    # Keep selected state in session state
                     checkbox_key = f"file_check_{filename}"
                     is_checked = st.checkbox(f"📄 {filename}", key=checkbox_key)
                     if is_checked:
@@ -780,6 +823,7 @@ with active_tabs[1]:
                             if loaded_df is not None:
                                 st.session_state.multi_files[fn] = loaded_df
                         st.session_state.inferred_relations = None # Reset
+                        st.session_state.df = None # Reset active
                         st.success(f"Successfully loaded {len(st.session_state.multi_files)} files into memory!")
                         st.rerun()
         else:
@@ -808,6 +852,7 @@ with active_tabs[1]:
                             st.session_state.dashboard_items = [] # Reset dashboard
                             st.session_state.suggestions = get_ai_suggestions(df)
                             st.session_state.data_advisory = generate_data_advisory(df, st.session_state.selected_model)
+                            st.session_state.custom_advice_output = ""
                             st.success(f"`{fn}` is now the active dataset!")
                             st.rerun()
             else:
@@ -819,7 +864,6 @@ with active_tabs[1]:
         st.markdown("### 🧬 Smart Unions (Schema Concatenation)")
         st.markdown("<p style='color: #64748b; font-size:0.9rem; margin-top:-8px;'>Automatically detects loaded files with identical schemas and unions them vertically.</p>", unsafe_allow_html=True)
         
-        # Group files by sorted column names
         schema_groups = {}
         for fn, df in st.session_state.multi_files.items():
             cols_signature = tuple(sorted(df.columns))
@@ -865,7 +909,6 @@ with active_tabs[1]:
             if st.session_state.inferred_relations:
                 st.markdown(st.session_state.inferred_relations)
                 
-                # Check for mermaid block
                 mermaid_code = extract_mermaid_code(st.session_state.inferred_relations)
                 if mermaid_code:
                     with st.expander("📐 Interactive Entity-Relationship Layout", expanded=True):
@@ -878,18 +921,15 @@ with active_tabs[1]:
                 
                 filenames = list(st.session_state.multi_files.keys())
                 
-                # Select tables
                 left_table_name = st.selectbox("Left Table (Primary)", filenames, index=0)
                 right_table_name = st.selectbox("Right Table (Foreign)", filenames, index=min(1, len(filenames)-1))
                 
                 left_df = st.session_state.multi_files[left_table_name]
                 right_df = st.session_state.multi_files[right_table_name]
                 
-                # Select Join Columns
                 left_key = st.selectbox(f"Select Join Column from '{left_table_name}'", left_df.columns)
                 right_key = st.selectbox(f"Select Join Column from '{right_table_name}'", right_df.columns)
                 
-                # Join Type
                 join_type = st.selectbox(
                     "Join / Merge Type",
                     ["inner", "left", "right", "outer"],
@@ -898,7 +938,6 @@ with active_tabs[1]:
                 )
                 
                 st.divider()
-                # Run the Join
                 if st.button("🚀 Execute Custom Join & Set as Active Data", use_container_width=True):
                     try:
                         merged_df = pd.merge(
@@ -913,16 +952,17 @@ with active_tabs[1]:
                         st.session_state.dashboard_items = [] # Reset dashboard
                         st.session_state.suggestions = get_ai_suggestions(merged_df)
                         st.session_state.data_advisory = generate_data_advisory(merged_df, st.session_state.selected_model)
+                        st.session_state.custom_advice_output = ""
                         
-                        st.success(f"Tables successfully joined! Resulting dataset has `{merged_df.shape[0]}` rows and `{merged_df.shape[1]}` columns. It is now loaded as your active dataset in Tab 1!")
+                        st.success(f"Tables successfully joined! Resulting dataset has `{merged_df.shape[0]}` rows and `{merged_df.shape[1]}` columns. It is now loaded as your active dataset in Tab 2!")
                     except Exception as ex:
                         st.error(f"Error performing join: {ex}")
 
 
 # ==========================================
-# TAB 1: VISUALIZATION DASHBOARD
+# TAB 2: VISUALIZATION DASHBOARD (Index 1)
 # ==========================================
-with active_tabs[0]:
+with active_tabs[1]:
     if st.session_state.df is not None:
         # Render profiling suggestions if available
         if st.session_state.suggestions:
@@ -934,13 +974,12 @@ with active_tabs[0]:
             for idx, sug in enumerate(st.session_state.suggestions):
                 with cols[idx]:
                     if st.button(sug, key=f"sug_{idx}", use_container_width=True):
-                        st.session_state.voice_input_value = sug
                         st.session_state.main_query_input = sug
                         st.rerun()
 
         st.markdown("### ➕ Add a Visualization")
         
-        # Text input for request
+        # Text input for request (fully resolved state key, no conflicts!)
         user_request = st.text_input(
             "Enter your query",
             placeholder="e.g., 'Show daily sales as a bar chart and the 14-day rolling average as a trendline'",
@@ -1003,7 +1042,7 @@ with active_tabs[0]:
                             "request": user_request,
                             "code": python_code
                         })
-                        st.session_state.voice_input_value = "" # Reset
+                        st.session_state.main_query_input = "" # Reset
                         st.rerun()
                     else:
                         st.error("Could not construct visualization code for the given request.")
@@ -1018,6 +1057,30 @@ with active_tabs[0]:
         st.write("") # Spacer
         with st.expander("📄 Active Dataset Preview (First 15 Rows)", expanded=False):
             st.dataframe(st.session_state.df.head(15), use_container_width=True)
+
+        # Interactive "Ask AI Data Advisor & Get Advice" panel
+        st.write("") # Spacer
+        st.divider()
+        st.markdown("### 💬 Ask AI Data Advisor & Get Business Advice")
+        st.markdown("<p style='color: #64748b; font-size:0.9rem; margin-top:-8px;'>Ask complex business questions about your columns and trends, and get concrete, numeric optimization advice.</p>", unsafe_allow_html=True)
+        
+        advisor_query = st.text_input(
+            "Ask a business question",
+            placeholder="e.g., 'Why are our profit margins in Europe lower than other regions and how do we fix it?'",
+            key="advisor_query_input",
+            label_visibility="collapsed"
+        )
+        
+        if st.button("🧠 Get Business Advice", key="get_advice_btn") and advisor_query:
+            with st.spinner("AI Data Advisor is auditing your data and formulating strategic advice..."):
+                advice_result = get_custom_business_advice(st.session_state.df, advisor_query, st.session_state.selected_model)
+                if advice_result:
+                    st.session_state.custom_advice_output = advice_result
+                    st.rerun()
+                    
+        if st.session_state.get("custom_advice_output"):
+            st.info("💡 **AI Data Advisor Strategic Advice:**")
+            st.markdown(st.session_state.custom_advice_output)
  
         # Render Dashboard Workspace
         if st.session_state.dashboard_items:
@@ -1038,7 +1101,6 @@ with active_tabs[0]:
             with ctrl_cols[2]:
                 st.write("") # spacing
                 st.write("") # spacing
-                # Gather all python scripts into a clean aggregate file
                 combined_script = "# Composed Dashboard Python Script\n"
                 combined_script += "import pandas as pd\nimport plotly.express as px\nimport plotly.graph_objects as go\nfrom plotly.subplots import make_subplots\n\n"
                 combined_script += "# Load your data here:\n# df = pd.read_csv('your_file.csv')\n\n"
@@ -1054,7 +1116,6 @@ with active_tabs[0]:
                     use_container_width=True
                 )
                 
-                # Export standalone responsive HTML
                 html_export_bytes = generate_html_export(st.session_state.dashboard_items, st.session_state.df)
                 st.download_button(
                     "🌐 Download Standalone HTML Dashboard",
@@ -1090,14 +1151,13 @@ with active_tabs[0]:
                         st.write("") # Spacer
 
     else:
-        # Large welcoming section when no dataset is active
         st.markdown("""
         <div style='background: rgba(30, 41, 59, 0.4); border: 1px dashed rgba(255, 255, 255, 0.15); border-radius: 20px; padding: 40px; text-align: center; margin-top: 20px;'>
             <span style='font-size: 3.5rem;'>🚀</span>
             <h2 style='color: #f8fafc; font-weight: 700; margin-top: 15px;'>Your Active Dashboard is Empty</h2>
             <p style='color: #94a3b8; font-size:1rem; max-width: 600px; margin: 10px auto 25px auto;'>
                 Before you can generate beautiful interactive charts, you need an active dataset. 
-                Go to the <b>📁 Data & AI Join Studio</b> tab above, scan a local folder, load your datasets, and combine them. 
+                Go to the first tab (<b>📁 Data & AI Join Studio</b>), scan your local folder, load your datasets, and combine them. 
                 Once loaded or joined, the combined data will appear here automatically!
             </p>
         </div>
