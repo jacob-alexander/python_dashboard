@@ -170,6 +170,7 @@ if "inferred_relations" not in st.session_state: st.session_state.inferred_relat
 if "main_query_input" not in st.session_state: st.session_state.main_query_input = ""
 if "pending_query" not in st.session_state: st.session_state.pending_query = None
 if "custom_advice_output" not in st.session_state: st.session_state.custom_advice_output = ""
+if "auto_strategic_advice" not in st.session_state: st.session_state.auto_strategic_advice = ""
 
 # --- Google AI API Configuration & Key Manager ---
 st.sidebar.markdown("### 🔑 API Key & Model Configuration")
@@ -908,6 +909,11 @@ with active_tabs[0]:
                             st.session_state.loaded_filename = first_file
                             st.session_state.suggestions = get_ai_suggestions(st.session_state.df)
                             st.session_state.data_advisory = generate_data_advisory(st.session_state.df, st.session_state.selected_model)
+                            st.session_state.auto_strategic_advice = get_custom_business_advice(
+                                st.session_state.df,
+                                "Identify specific profit margin adjustments, price optimization strategies, and volume growth opportunities across our countries and item types to maximize commercial revenues.",
+                                st.session_state.selected_model
+                            )
                             st.session_state.custom_advice_output = ""
                             st.success(f"Successfully loaded {len(st.session_state.multi_files)} files! `{first_file}` is set as your active dataset.")
                         else:
@@ -927,6 +933,11 @@ with active_tabs[0]:
                     st.session_state.loaded_filename = only_file
                     st.session_state.suggestions = get_ai_suggestions(st.session_state.df)
                     st.session_state.data_advisory = generate_data_advisory(st.session_state.df, st.session_state.selected_model)
+                    st.session_state.auto_strategic_advice = get_custom_business_advice(
+                        st.session_state.df,
+                        "Identify specific profit margin adjustments, price optimization strategies, and volume growth opportunities across our countries and item types to maximize commercial revenues.",
+                        st.session_state.selected_model
+                    )
                 
                 for fn, df in st.session_state.multi_files.items():
                     card_cols = st.columns([7, 5])
@@ -939,6 +950,11 @@ with active_tabs[0]:
                             st.session_state.dashboard_items = [] # Reset dashboard
                             st.session_state.suggestions = get_ai_suggestions(df)
                             st.session_state.data_advisory = generate_data_advisory(df, st.session_state.selected_model)
+                            st.session_state.auto_strategic_advice = get_custom_business_advice(
+                                df,
+                                "Identify specific profit margin adjustments, price optimization strategies, and volume growth opportunities across our countries and item types to maximize commercial revenues.",
+                                st.session_state.selected_model
+                            )
                             st.session_state.custom_advice_output = ""
                             st.success(f"`{fn}` is now the active dataset!")
                             st.rerun()
@@ -1039,6 +1055,11 @@ with active_tabs[0]:
                         st.session_state.dashboard_items = [] # Reset dashboard
                         st.session_state.suggestions = get_ai_suggestions(merged_df)
                         st.session_state.data_advisory = generate_data_advisory(merged_df, st.session_state.selected_model)
+                        st.session_state.auto_strategic_advice = get_custom_business_advice(
+                            merged_df,
+                            "Identify specific profit margin adjustments, price optimization strategies, and volume growth opportunities across our countries and item types to maximize commercial revenues.",
+                            st.session_state.selected_model
+                        )
                         st.session_state.custom_advice_output = ""
                         
                         st.success(f"Tables successfully joined! Resulting dataset has `{merged_df.shape[0]}` rows and `{merged_df.shape[1]}` columns. It is now loaded as your active dataset in Tab 2!")
@@ -1145,6 +1166,17 @@ with active_tabs[1]:
             with st.expander("🧠 AI Data Advisory & Optimization Insights", expanded=True):
                 st.markdown(st.session_state.data_advisory)
 
+        # AI Strategic Advice panel (rendered automatically!)
+        if st.session_state.get("auto_strategic_advice"):
+            st.markdown(f"""
+            <div class="advisor-card">
+                <div class="advisor-header">💡 AI Data Advisor Strategic Advice</div>
+                <div class="advisor-body">
+                    {st.session_state.auto_strategic_advice}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
         # Active Dataset Preview panel
         st.write("") # Spacer
         with st.expander("📄 Active Dataset Preview (First 15 Rows)", expanded=False):
@@ -1173,7 +1205,7 @@ with active_tabs[1]:
         if st.session_state.get("custom_advice_output"):
             st.markdown(f"""
             <div class="advisor-card">
-                <div class="advisor-header">💡 AI Data Advisor Strategic Advice</div>
+                <div class="advisor-header">💡 AI Data Advisor: Custom Business Advice</div>
                 <div class="advisor-body">
                     {st.session_state.custom_advice_output}
                 </div>
