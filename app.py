@@ -886,6 +886,7 @@ with active_tabs[0]:
                 with cols[idx]:
                     if st.button(sug, key=f"sug_{idx}", use_container_width=True):
                         st.session_state.voice_input_value = sug
+                        st.session_state.main_query_input = sug
                         st.rerun()
 
         st.markdown("### ➕ Add a Visualization")
@@ -936,6 +937,7 @@ with active_tabs[0]:
                         
                         if text:
                             st.session_state.voice_input_value = text
+                            st.session_state.main_query_input = text
                             st.success(f"Transcribed command: \"{text}\"")
                             st.rerun()
                     except Exception as ex:
