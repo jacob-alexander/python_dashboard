@@ -143,9 +143,9 @@ if system_key:
     if override_key:
         api_key = st.sidebar.text_input(
             "Custom Google API Key",
-            value=st.session_state.get("google_api_key", ""),
+            key="custom_api_key",
             type="password",
-            help="Enter a custom API key to override the secure system secret.",
+            help="Enter your own Google Cloud Gemini API key to override the secure system secret.",
             placeholder="AIzaSy..."
         )
     else:
