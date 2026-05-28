@@ -6,3 +6,5 @@ pyarrow
 streamlit-mic-recorder
 matplotlib
 plotly
+lxml
+xlrd
