@@ -370,7 +370,7 @@ def get_python_code(user_request, df_head, model_name):
     daily = df.groupby(df['DATE'].dt.date).sum().reset_index()
     daily['MovingAvg'] = daily['VALUE'].rolling(window=7).mean()
 
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    fig = make_subplots(specs=[[{{"secondary_y": True}}]])
     fig.add_trace(go.Bar(x=daily['DATE'], y=daily['VALUE'], name='Daily Value', marker_color='#6366f1'), secondary_y=False)
     fig.add_trace(go.Scatter(x=daily['DATE'], y=daily['MovingAvg'], name='7-Day Average', line=dict(color='#10b981', width=3)), secondary_y=True)
 
