@@ -118,13 +118,19 @@ def inject_custom_css():
         box-shadow: 0 10px 30px rgba(99, 102, 241, 0.04);
         margin-top: 20px;
         margin-bottom: 25px;
+    }
+    
+    .advisor-card, .advisor-card p, .advisor-card li, .advisor-card ul, .advisor-card ol, .advisor-card div {
         font-family: 'Outfit', sans-serif !important;
+        color: #334155 !important;
+        font-size: 0.95rem !important;
+        line-height: 1.7 !important;
     }
     
     .advisor-header {
-        font-weight: 700;
-        font-size: 1.2rem;
-        color: #4f46e5;
+        font-weight: 700 !important;
+        font-size: 1.2rem !important;
+        color: #4f46e5 !important;
         margin-bottom: 14px;
         display: flex;
         align-items: center;
@@ -132,26 +138,19 @@ def inject_custom_css():
         font-family: 'Outfit', sans-serif !important;
     }
     
-    .advisor-body {
-        color: #334155;
-        font-size: 0.95rem;
-        line-height: 1.7;
-        font-family: 'Outfit', sans-serif !important;
+    .advisor-card strong {
+        color: #4f46e5 !important;
+        font-weight: 600 !important;
     }
     
-    .advisor-body ul, .advisor-body ol {
+    .advisor-card ul, .advisor-card ol {
         margin-top: 8px;
         margin-bottom: 8px;
         padding-left: 20px;
     }
     
-    .advisor-body li {
+    .advisor-card li {
         margin-bottom: 8px;
-    }
-    
-    .advisor-body strong {
-        color: #4f46e5;
-        font-weight: 600;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -512,6 +511,26 @@ def generate_data_advisory(df, model_name):
         return f"Advisory generation skipped: {e}"
 
 
+def clean_html_response(html_text):
+    """Strips markdown code block wrappers and removes all leading indents from HTML lines to prevent markdown code block rendering issues."""
+    if not html_text:
+        return ""
+    html_text = html_text.strip()
+    if html_text.startswith("```html"):
+        html_text = html_text[7:]
+    elif html_text.startswith("```"):
+        html_text = html_text[3:]
+    if html_text.endswith("```"):
+        html_text = html_text[:-3]
+    html_text = html_text.strip()
+    
+    # Left-align all HTML lines to prevent markdown parser from treating indents as code blocks
+    cleaned_lines = []
+    for line in html_text.splitlines():
+        cleaned_lines.append(line.lstrip())
+    return "\n".join(cleaned_lines)
+
+
 def get_custom_business_advice(df, user_query, model_name):
     """Formulates highly targeted, concrete, and numerical business advice based on a specific user inquiry and 15-row preview."""
     try:
@@ -549,7 +568,7 @@ def get_custom_business_advice(df, user_query, model_name):
         
         model = genai.GenerativeModel(model_name)
         response = model.generate_content(prompt)
-        return response.text.strip()
+        return clean_html_response(response.text.strip())
     except Exception as e:
         return f"Could not generate advice: {e}"
 
