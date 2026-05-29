@@ -885,19 +885,20 @@ with st.sidebar:
 # ==========================================
 with active_tabs[0]:
     st.markdown("### 📥 Load Datasets into Memory")
-    st.markdown("<p style='color: #64748b; font-size:0.9rem; margin-top:-8px;'>Drag and drop files or entire folders from your computer to ingest and profile them automatically. Works identically locally and in the cloud!</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #64748b; font-size:0.9rem; margin-top:-8px;'>Drag and drop multiple data files from your computer to ingest and profile them automatically. Works identically locally and in the cloud!</p>", unsafe_allow_html=True)
     
     st.write("") # Spacer
     cols = st.columns([8, 4])
     
     with cols[0]:
-        # 1. Drag & Drop File & Folder Ingestor (Always visible & primary!)
-        st.markdown("#### 📤 Drag & Drop Files or Folders")
+        # 1. Drag & Drop File Ingestor (Always visible & primary!)
+        st.markdown("#### 📤 Drag & Drop Data Files")
+        st.info("💡 **Folder Ingest Tip**: Modern web browsers do not allow dragging and dropping raw folder directories directly. To import your local data, simply open your local folder, **select all files inside** (e.g., using `Ctrl+A` or `Cmd+A`), and drag-and-drop the files here!")
         uploaded_files = st.file_uploader(
-            "Drag & Drop files or folders here",
+            "Drag & Drop files here",
             type=['csv', 'xlsx', 'xls', 'parquet', 'txt', 'tsv', 'json', 'jsonl', 'xml', 'html', 'db', 'sqlite', 'pdf', 'png', 'jpg', 'jpeg'],
             accept_multiple_files=True,
-            help="Select or drag multiple data files. Dropping folders will automatically upload all files inside them.",
+            help="Select or drag multiple data files from your computer.",
             label_visibility="collapsed"
         )
         
